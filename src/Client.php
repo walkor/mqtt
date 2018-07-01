@@ -155,7 +155,9 @@ class Client
         5   => 'Connection Refused, not authorized',
         100 => 'Connection closed',
         101 => 'Connection timeout',
-        102 => 'No connection to broker',
+        102 => 'Connection fail',
+        103 => 'Connection buffer full and close connection',
+        140 => 'No connection to broker',
         240 => 'Invalid topic',
         241 => 'Invalid qos',
     );
@@ -206,6 +208,203 @@ class Client
         $this->setConnectionTimeout($this->_options['connect_timeout']);
         if ($this->debug) {
             echo "-> Try to connect to {$this->_remoteAddress}\n";
+        }
+    }
+
+    /**
+     * subscribe
+     *
+     * @param $topic
+     * @param array $options
+     * @param callable $callback
+     */
+    public function subscribe($topic, $options = array(), $callback = null)
+    {
+        if ($this->checkDisconnecting($callback)) {
+            return;
+        }
+
+        if (is_array($topic)) {
+            $topics = $topic;
+        } else {
+            $qos = !is_callable($options) && isset($options['qos']) ? $options['qos'] : 0;
+            $topics = array($topic => $qos);
+        }
+
+        $args = func_get_args();
+
+        $callback = end($args);
+
+        if (!is_callable($callback)) {
+            $callback = null;
+        }
+
+        if ($invalid_topic = static::validateTopics($topics)) {
+            $this->triggerError(240, $callback);
+            return;
+        }
+
+        if ($this->_options['resubscribe']) {
+            $this->_resubscribeTopics += $topics;
+        }
+
+        $package = array(
+            'cmd'        => Mqtt::CMD_SUBSCRIBE,
+            'topics'     => $topics,
+            'message_id' => $this->incrMessageId(),
+        );
+
+        if ($this->debug) {
+            echo "-> Send SUBSCRIBE package, topic:".implode(',', array_keys($topics))." message_id:{$package['message_id']}\n";
+        }
+        $this->sendPackage($package);
+
+        if ($callback) {
+            $this->_outgoing[$package['message_id']] = function($exception, $codes = array())use($callback, $topics) {
+                if ($exception) {
+                    call_user_func($callback, $exception, array());
+                    return;
+                }
+                $granted =  array();
+                $topics = array_keys($topics);
+                foreach ($topics as $key => $topic) {
+                    $granted[$topic] = $codes[$key];
+                }
+                if ($callback) {
+                    call_user_func($callback, null, $granted);
+                }
+            };
+        }
+    }
+
+    /**
+     * unsubscribe
+     *
+     * @param $topic
+     */
+    public function unsubscribe($topic, $callback = null)
+    {
+        if ($this->checkDisconnecting($callback)) {
+            return;
+        }
+        $topics = is_array($topic) ? $topic : array($topic);
+        if ($invalid_topic = static::validateTopics($topics)) {
+            $this->triggerError(240);
+            return;
+        }
+        foreach ($topics as $topic) {
+            if (isset($this->_resubscribeTopics[$topic])) {
+                unset($this->_resubscribeTopics[$topic]);
+            }
+        }
+        $package = array(
+            'cmd'        => Mqtt::CMD_UNSUBSCRIBE,
+            'topics'     => $topics,
+            'message_id' => $this->incrMessageId(),
+        );
+        if ($callback) {
+            $this->_outgoing[$package['message_id']] = $callback;
+        }
+        if ($this->debug) {
+            echo "-> Send UNSUBSCRIBE package, topic:".implode(',', $topics)." message_id:{$package['message_id']}\n";
+        }
+        $this->sendPackage($package);
+    }
+
+    /**
+     * publish
+     *
+     * @param $topic
+     * @param $content
+     * @param array $options
+     * @param callable $callback
+     */
+    public function publish($topic, $content, $options = array(), $callback = null)
+    {
+        if ($this->checkDisconnecting($callback)) {
+            return;
+        }
+        static::isValidTopic($topic);
+        $qos    = 0;
+        $retain = false;
+        $dup    = false;
+        if (isset($options['qos'])) {
+            $qos = $options['qos'];
+            if($this->checkInvalidQos($qos, $callback)) {
+                return;
+            }
+        }
+        if (!empty($options['retain'])) {
+            $retain = true;
+        }
+        if (!empty($options['dup'])) {
+            $dup = true;
+        }
+
+        $package = array(
+            'cmd'     => Mqtt::CMD_PUBLISH,
+            'topic'   => $topic,
+            'content' => $content,
+            'retain'  => $retain,
+            'qos'     => $qos,
+            'dup'     => $dup,
+        );
+
+        if ($qos) {
+            $package['message_id'] = $this->incrMessageId();
+            if ($callback) {
+                $this->_outgoing[$package['message_id']] = $callback;
+            }
+        }
+
+        if ($this->debug) {
+            $message_id = isset($package['message_id']) ? $package['message_id'] : '';
+            echo "-> Send PUBLISH package, topic:$topic content:$content retain:$retain qos:$qos dup:$dup message_id:$message_id\n";
+        }
+
+        $this->sendPackage($package);
+    }
+
+    /**
+     * disconnect
+     */
+    public function disconnect()
+    {
+        $this->sendPackage(array('cmd' => Mqtt::CMD_DISCONNECT));
+        if ($this->debug) {
+            echo "-> Send DISCONNECT package\n";
+        }
+        $this->close();
+    }
+
+    /**
+     * close
+     */
+    public function close()
+    {
+        $this->_doNotReconnect = true;
+        if ($this->debug) {
+            echo "-> Connection->close() called\n";
+        }
+        $this->_connection->close();
+    }
+
+    /**
+     * reconnect
+     *
+     * @param int $after
+     */
+    public function reconnect($after = 0)
+    {
+        $this->_doNotReconnect        = false;
+        $this->_connection->onConnect = array($this, 'onConnectionConnect');
+        $this->_connection->onMessage = array($this, 'onConnectionMessage');
+        $this->_connection->onError   = array($this, 'onConnectionError');
+        $this->_connection->onClose   = array($this, 'onConnectionClose');
+        $this->_connection->reConnect($after);
+        $this->setConnectionTimeout($this->_options['connect_timeout'] + $after);
+        if ($this->debug) {
+            echo "-- Reconnect after $after seconds\n";
         }
     }
 
@@ -401,207 +600,6 @@ class Client
     }
 
     /**
-     * subscribe
-     *
-     * @param $topic
-     * @param $qos
-     * @param $callback
-     * @throws \Exception
-     */
-    public function subscribe($topic, $options = null, $callback = null)
-    {
-        if ($this->checkDisconnecting($callback)) {
-            return;
-        }
-
-        if (is_array($topic)) {
-            $topics = $topic;
-        } else {
-            $qos = !is_callable($options) && isset($options['qos']) ? $options['qos'] : 0;
-            $topics = array($topic => $qos);
-        }
-
-        $args = func_get_args();
-
-        $callback = end($args);
-
-        if (!is_callable($callback)) {
-            $callback = null;
-        }
-
-        if ($invalid_topic = static::validateTopics($topics)) {
-            $this->triggerError(240, $callback);
-            return;
-        }
-
-        if ($this->_options['resubscribe']) {
-            $this->_resubscribeTopics += $topics;
-        }
-
-        $package = array(
-            'cmd'        => Mqtt::CMD_SUBSCRIBE,
-            'topics'     => $topics,
-            'message_id' => $this->incrMessageId(),
-        );
-
-        if ($this->debug) {
-            echo "-> Send SUBSCRIBE package, topic:".implode(',', array_keys($topics))." message_id:{$package['message_id']}\n";
-        }
-        $this->sendPackage($package);
-
-        if ($callback) {
-            $this->_outgoing[$package['message_id']] = function($exception, $codes = array())use($callback, $topics) {
-                if ($exception) {
-                    call_user_func($callback, $exception, array());
-                    return;
-                }
-                $granted =  array();
-                $topics = array_keys($topics);
-                foreach ($topics as $key => $topic) {
-                    $granted[$topic] = $codes[$key];
-                }
-                if ($callback) {
-                    call_user_func($callback, null, $granted);
-                }
-            };
-        }
-    }
-
-    /**
-     * unsubscribe
-     *
-     * @param $topic
-     * @throws \Exception
-     */
-    public function unsubscribe($topic, $callback = null)
-    {
-        if ($this->checkDisconnecting($callback)) {
-            return;
-        }
-        $topics = is_array($topic) ? $topic : array($topic);
-        if ($invalid_topic = static::validateTopics($topics)) {
-            $this->triggerError(240);
-            return;
-        }
-        foreach ($topics as $topic) {
-            if (isset($this->_resubscribeTopics[$topic])) {
-                unset($this->_resubscribeTopics[$topic]);
-            }
-        }
-        $package = array(
-            'cmd'        => Mqtt::CMD_UNSUBSCRIBE,
-            'topics'     => $topics,
-            'message_id' => $this->incrMessageId(),
-        );
-        if ($callback) {
-            $this->_outgoing[$package['message_id']] = $callback;
-        }
-        if ($this->debug) {
-            echo "-> Send UNSUBSCRIBE package, topic:".implode(',', $topics)." message_id:{$package['message_id']}\n";
-        }
-        $this->sendPackage($package);
-    }
-
-    /**
-     * publish
-     *
-     * @param $topic
-     * @param $message
-     * @param array $options
-     * @throws \Exception
-     */
-    public function publish($topic, $content, $options = array(), $callback = null)
-    {
-        if ($this->checkDisconnecting($callback)) {
-            return;
-        }
-        static::isValidTopic($topic);
-        $qos    = 0;
-        $retain = false;
-        $dup    = false;
-        if (isset($options['qos'])) {
-            $qos = $options['qos'];
-            if($this->checkInvalidQos($qos, $callback)) {
-                return;
-            }
-        }
-        if (!empty($options['retain'])) {
-            $retain = true;
-        }
-        if (!empty($options['dup'])) {
-            $dup = true;
-        }
-
-        $package = array(
-            'cmd'     => Mqtt::CMD_PUBLISH,
-            'topic'   => $topic,
-            'content' => $content,
-            'retain'  => $retain,
-            'qos'     => $qos,
-            'dup'     => $dup,
-        );
-
-        if ($qos) {
-            $package['message_id'] = $this->incrMessageId();
-            if ($callback) {
-                $this->_outgoing[$package['message_id']] = $callback;
-            }
-        }
-
-        if ($this->debug) {
-            $message_id = isset($package['message_id']) ? $package['message_id'] : '';
-            echo "-> Send PUBLISH package, topic:$topic content:$content retain:$retain qos:$qos dup:$dup message_id:$message_id\n";
-        }
-
-        $this->sendPackage($package);
-    }
-
-    /**
-     * disconnect
-     *
-     * @throws \Exception
-     */
-    public function disconnect()
-    {
-        $this->sendPackage(array('cmd' => Mqtt::CMD_DISCONNECT));
-        if ($this->debug) {
-            echo "-> Send DISCONNECT package\n";
-        }
-        $this->close();
-    }
-
-    /**
-     * close
-     */
-    public function close()
-    {
-        $this->_doNotReconnect = true;
-        if ($this->debug) {
-            echo "-> Connection->close() called\n";
-        }
-        $this->_connection->close();
-    }
-
-    /**
-     * reconnect
-     *
-     * @param int $after
-     */
-    public function reconnect($after = 0)
-    {
-        $this->_doNotReconnect        = false;
-        $this->_connection->onConnect = array($this, 'onConnectionConnect');
-        $this->_connection->onMessage = array($this, 'onConnectionMessage');
-        $this->_connection->onError   = array($this, 'onConnectionError');
-        $this->_connection->onClose   = array($this, 'onConnectionClose');
-        $this->_connection->reConnect($after);
-        $this->setConnectionTimeout($this->_options['connect_timeout'] + $after);
-        if ($this->debug) {
-            echo "-- Reconnect after $after seconds\n";
-        }
-    }
-
-    /**
      * onConnectionClose
      */
     public function onConnectionClose()
@@ -625,6 +623,24 @@ class Client
     }
 
     /**
+     * onConnectionError
+     *
+     * @param $connection
+     * @param $code
+     */
+    public function onConnectionError($connection, $code)
+    {
+        // Connection error
+        if ($code === 1) {
+            $this->triggerError(100);
+        // Send fail, connection closed
+        } else {
+            $this->triggerError(102);
+        }
+
+    }
+
+    /**
      * onConnectionBufferFull
      */
     public function onConnectionBufferFull()
@@ -632,6 +648,7 @@ class Client
         if ($this->debug) {
             echo "-- Connection buffer full and close connection\n";
         }
+        $this->triggerError(103);
         $this->_connection->close();
     }
 
@@ -816,7 +833,7 @@ class Client
     protected function checkDisconnecting($callback = null)
     {
         if ($this->_state !== static::STATE_ESTABLISHED) {
-            $this->triggerError(102, $callback);
+            $this->triggerError(140, $callback);
             return true;
         }
         return false;
