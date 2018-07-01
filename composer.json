@@ -1,5 +1,5 @@
 {
-    "name"  : "workerman/channel",
+    "name"  : "workerman/mqtt",
     "type"  : "library",
     "homepage": "http://www.workerman.net",
     "license" : "MIT",
