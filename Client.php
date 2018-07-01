@@ -19,7 +19,7 @@ use \Workerman\Lib\Timer;
 
 /**
  * Class Client
- * @package Workerman\MQTT
+ * @package Workerman\Mqtt
  */
 class Client
 {
