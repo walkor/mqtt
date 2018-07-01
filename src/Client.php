@@ -632,10 +632,10 @@ class Client
     {
         // Connection error
         if ($code === 1) {
-            $this->triggerError(100);
+            $this->triggerError(102);
         // Send fail, connection closed
         } else {
-            $this->triggerError(102);
+            $this->triggerError(100);
         }
 
     }
@@ -741,7 +741,7 @@ class Client
         }
         if (!$callback) {
             $callback = $this->onError ? $this->onError : function($exception){
-                echo "Mqtt client:", $exception->getMessage(), PHP_EOL;
+                echo "Mqtt client: ", $exception->getMessage(), PHP_EOL;
             };
         }
         call_user_func($callback, $exception);
