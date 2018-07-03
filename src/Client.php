@@ -182,12 +182,15 @@ class Client
      * @param $address
      * @param array $options
      */
-    public function __construct($address, $options = array())
+    public function __construct($address, $options = array(),$context = null)
     {
         class_alias('\Workerman\Mqtt\Protocols\Mqtt', '\Workerman\Protocols\Mqtt');
         $this->setOptions($options);
         $this->_remoteAddress = $address;
-        $this->_connection    = new AsyncTcpConnection($address);
+        $this->_connection    = new AsyncTcpConnection($address,$context);
+        if(!empty($context)){
+            $this->_connection->transport = 'ssl';
+        }
         $this->onReconnect    = array($this, 'onMqttReconnect');
         $this->onMessage      = function(){};
     }
