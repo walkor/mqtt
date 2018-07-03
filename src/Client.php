@@ -175,6 +175,8 @@ class Client
         'reconnect_period' => 1, // reconnect period default 1 second, set to 0 to disable
         'connect_timeout'  => 10, // 10 seconds, time to wait before a CONNACK is received
         'resubscribe'      => true, // default true, if connection is broken and reconnects, subscribed topics are automatically subscribed again.
+        'bindto'           => '', // bindto option, used to specify the IP address that PHP will use to access the network
+        'ssl'              => false, // ssl context
     );
 
     /**
@@ -186,10 +188,20 @@ class Client
     {
         class_alias('\Workerman\Mqtt\Protocols\Mqtt', '\Workerman\Protocols\Mqtt');
         $this->setOptions($options);
+        $context = array();
+        if ($this->_options['bindto']) {
+            $context['socket'] = array('bindto' => $this->_options['bindto']);
+        }
+        if ($this->_options['ssl'] && is_array($this->_options['ssl'])) {
+            $context['ssl'] = $this->_options['ssl'];
+        }
         $this->_remoteAddress = $address;
-        $this->_connection    = new AsyncTcpConnection($address);
+        $this->_connection    = new AsyncTcpConnection($address, $context);
         $this->onReconnect    = array($this, 'onMqttReconnect');
         $this->onMessage      = function(){};
+        if ($this->_options['ssl']) {
+            $this->_connection->transport = 'ssl';
+        }
     }
 
     /**
@@ -972,6 +984,14 @@ class Client
 
         if (isset($options['resubscribe']) && !$options['resubscribe']) {
             $this->_options['resubscribe'] = false;
+        }
+
+        if (!empty($options['bindto'])) {
+            $this->_options['bindto'] = $options['bindto'];
+        }
+
+        if (!empty($options['ssl'])) {
+            $this->_options['ssl'] = $options['ssl'];
         }
 
     }
