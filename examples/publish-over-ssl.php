@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../vendor/autoload.php';
 use Workerman\Worker;
+use Workerman\Lib\Timer;
 
 $worker = new Worker();
 $worker->onWorkerStart = function(){
