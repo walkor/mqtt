@@ -13,7 +13,10 @@ $worker->onWorkerStart = function(){
         'debug' => true
     ));
     $mqtt->onConnect = function($mqtt) {
-       $mqtt->publish('test', 'hello workerman mqtt');
+        // publish message every 2 seconds.
+        Timer::add(2, function() use ($mqtt) {
+            $mqtt->publish('workerman', 'hello workerman mqtt');
+        });
     };
     $mqtt->connect();
 };
