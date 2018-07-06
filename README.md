@@ -62,7 +62,7 @@ Create an instance by $address and $options.
 
   * `$options` is the client connection options. Defaults:
     * `keepalive`: `50` seconds, set to `0` to disable
-    * `client_id`: client id
+    * `client_id`: client id, default `workerman-mqtt-client-{$mt_rand}`
     * `protocol_name`: `'MQTT'` or '`MQIsdp`'
     * `protocol_level`: `'MQTT'` is `4` and '`MQIsdp`' is `3`
     * `clean_session`: `true`, set to false to receive QoS 1 and 2 messages while
