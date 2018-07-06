@@ -400,7 +400,7 @@ class Client
         if ($this->_options['debug']) {
             echo "-> Connection->close() called", PHP_EOL;
         }
-        $this->_connection->close();
+        $this->_connection->destroy();
     }
 
     /**
@@ -490,7 +490,7 @@ class Client
                         echo "<- Recv CONNACK package but get error " . $message . PHP_EOL;
                     }
                     $this->triggerError($code);
-                    $this->_connection->close();
+                    $this->_connection->destroy();
                     return;
                 }
                 if ($this->_options['debug']) {
@@ -663,7 +663,7 @@ class Client
             echo "-- Connection buffer full and close connection", PHP_EOL;
         }
         $this->triggerError(103);
-        $this->_connection->close();
+        $this->_connection->destroy();
     }
 
     /**
@@ -805,7 +805,7 @@ class Client
                     echo "<- Recv PINGRESP timeout", PHP_EOL;
                     echo "-> Close connection", PHP_EOL;
                 }
-                $this->_connection->close();
+                $this->_connection->destroy();
                 return;
             }
             if ($this->_options['debug']) {
@@ -834,7 +834,7 @@ class Client
     {
         if ($this->_state === static::STATE_CONNECTING || $this->_state === static::STATE_WAITCONACK) {
             $this->triggerError(101);
-            $this->_connection->close();
+            $this->_connection->destroy();
         }
     }
 
