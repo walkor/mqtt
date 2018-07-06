@@ -13,10 +13,10 @@ $worker->onWorkerStart = function(){
         'debug' => true
     ));
     $mqtt->onConnect = function($mqtt) {
-        $mqtt->subscribe('test');
+        $mqtt->subscribe('workerman');
     };
     $mqtt->onMessage = function($topic, $content){
-        var_dump($topic, $content);
+        echo "topic:$topic content:$content\n";
     };
     $mqtt->connect();
 };
