@@ -340,8 +340,8 @@ class Client
         }
         static::isValidTopic($topic);
         $qos    = 0;
-        $retain = false;
-        $dup    = false;
+        $retain = 0;
+        $dup    = 0;
         if (isset($options['qos'])) {
             $qos = $options['qos'];
             if($this->checkInvalidQos($qos, $callback)) {
@@ -349,10 +349,10 @@ class Client
             }
         }
         if (!empty($options['retain'])) {
-            $retain = true;
+            $retain = 1;
         }
         if (!empty($options['dup'])) {
-            $dup = true;
+            $dup = 1;
         }
 
         $package = array(
