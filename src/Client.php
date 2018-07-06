@@ -191,7 +191,7 @@ class Client
         if ($this->_options['ssl'] && is_array($this->_options['ssl'])) {
             $context['ssl'] = $this->_options['ssl'];
         }
-        if (strpos($address, 'qmtts') === 0) {
+        if (strpos($address, 'mqtts') === 0) {
             if (empty($this->_options['ssl'])) {
                 $this->_options['ssl'] = true;
             }
