@@ -1,2 +1,2 @@
 # MQTT
-The MQTT client and broker for PHP based on workerman.
+The MQTT client for PHP based on workerman.
