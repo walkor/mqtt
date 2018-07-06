@@ -84,11 +84,6 @@ class Client
     public $onError = null;
 
     /**
-     * @var bool
-     */
-    public $debug = false;
-
-    /**
      * @var int
      */
     protected $_state = 1;
@@ -169,14 +164,15 @@ class Client
         'clean_session'    => 1, // set to 0 to receive QoS 1 and 2 messages while offline
         'username'         => '', // the username required by your broker
         'password'         => '', // the password required by your broker
-        'keepalive'        => 20, // default 20 seconds, set to 0 to disable
+        'keepalive'        => 50, // default 50 seconds, set to 0 to disable
         'protocol_name'    => 'MQTT', // protocol name MQTT or MQIsdp
         'protocol_level'   => 4, // protocol level, MQTT is 4 and MQIsdp is 3
         'reconnect_period' => 1, // reconnect period default 1 second, set to 0 to disable
-        'connect_timeout'  => 10, // 10 seconds, time to wait before a CONNACK is received
+        'connect_timeout'  => 30, // 30 seconds, time to wait before a CONNACK is received
         'resubscribe'      => true, // default true, if connection is broken and reconnects, subscribed topics are automatically subscribed again.
         'bindto'           => '', // bindto option, used to specify the IP address that PHP will use to access the network
         'ssl'              => false, // ssl context
+        'debug'            => false, // debug
     );
 
     /**
@@ -218,7 +214,7 @@ class Client
         $this->_state                    = static::STATE_CONNECTING;
         $this->_connection->connect();
         $this->setConnectionTimeout($this->_options['connect_timeout']);
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-> Try to connect to {$this->_remoteAddress}", PHP_EOL;
         }
     }
@@ -266,7 +262,7 @@ class Client
             'message_id' => $this->incrMessageId(),
         );
 
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-> Send SUBSCRIBE package, topic:".implode(',', array_keys($topics))." message_id:{$package['message_id']}", PHP_EOL;
         }
         $this->sendPackage($package);
@@ -317,7 +313,7 @@ class Client
         if ($callback) {
             $this->_outgoing[$package['message_id']] = $callback;
         }
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-> Send UNSUBSCRIBE package, topic:".implode(',', $topics)." message_id:{$package['message_id']}", PHP_EOL;
         }
         $this->sendPackage($package);
@@ -369,7 +365,7 @@ class Client
             }
         }
 
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             $message_id = isset($package['message_id']) ? $package['message_id'] : '';
             echo "-> Send PUBLISH package, topic:$topic content:$content retain:$retain qos:$qos dup:$dup message_id:$message_id", PHP_EOL;
         }
@@ -383,7 +379,7 @@ class Client
     public function disconnect()
     {
         $this->sendPackage(array('cmd' => Mqtt::CMD_DISCONNECT));
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-> Send DISCONNECT package", PHP_EOL;
         }
         $this->close();
@@ -395,7 +391,7 @@ class Client
     public function close()
     {
         $this->_doNotReconnect = true;
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-> Connection->close() called", PHP_EOL;
         }
         $this->_connection->close();
@@ -415,7 +411,7 @@ class Client
         $this->_connection->onClose   = array($this, 'onConnectionClose');
         $this->_connection->reConnect($after);
         $this->setConnectionTimeout($this->_options['connect_timeout'] + $after);
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-- Reconnect after $after seconds", PHP_EOL;
         }
     }
@@ -445,7 +441,7 @@ class Client
         }
         $this->_state = static::STATE_WAITCONACK;
         $this->_connection->send($package);
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-- Tcp connection established", PHP_EOL;
             echo "-> Send CONNECT package client_id:{$this->_options['client_id']} username:{$this->_options['username']} password:{$this->_options['password']} clean_session:{$this->_options['clean_session']} protocol_name:{$this->_options['protocol_name']} protocol_level:{$this->_options['protocol_level']}", PHP_EOL;
         }
@@ -463,7 +459,7 @@ class Client
                 'message_id' => $this->incrMessageId(),
             );
             $this->sendPackage($package);
-            if ($this->debug) {
+            if ($this->_options['debug']) {
                 echo "-> Send SUBSCRIBE(Resubscribe) package topics:" .
                     implode(',', array_keys($this->_resubscribeTopics))." message_id:{$package['message_id']}", PHP_EOL;
             }
@@ -484,14 +480,14 @@ class Client
                 $code = $data['code'];
                 if ($code != 0) {
                     $message = static::$_errorCodeStringMap[$code];
-                    if ($this->debug) {
+                    if ($this->_options['debug']) {
                         echo "<- Recv CONNACK package but get error " . $message . PHP_EOL;
                     }
                     $this->triggerError($code);
                     $this->_connection->close();
                     return;
                 }
-                if ($this->debug) {
+                if ($this->_options['debug']) {
                     echo "<- Recv CONNACK package, MQTT connect success", PHP_EOL;
                 }
                 $this->_state = static::STATE_ESTABLISHED;
@@ -514,7 +510,7 @@ class Client
                 $content    = $data['content'];
                 $qos        = $data['qos'];
                 $message_id = isset($data['message_id']) ? $data['message_id'] : '';
-                if ($this->debug) {
+                if ($this->_options['debug']) {
                     echo "<- Recv PUBLISH package, message_id:$message_id qos:$qos topic:$topic content:$content", PHP_EOL;
                 }
                 call_user_func($this->onMessage, $topic, $content, $this);
@@ -526,7 +522,7 @@ class Client
                     case 0:
                         break;
                     case 1:
-                        if ($this->debug) {
+                        if ($this->_options['debug']) {
                             echo "-> Send PUBACK package, message_id:$message_id", PHP_EOL;
                         }
                         $this->sendPackage(array(
@@ -535,7 +531,7 @@ class Client
                         ));
                         break;
                     case 2:
-                        if ($this->debug) {
+                        if ($this->_options['debug']) {
                             echo "-> Send PUBREC package, message_id:$message_id", PHP_EOL;
                         }
                         $this->sendPackage(array(
@@ -546,7 +542,7 @@ class Client
                 return;
             case Mqtt::CMD_PUBREC:
                 $message_id = $data['message_id'];
-                if ($this->debug) {
+                if ($this->_options['debug']) {
                     echo "<- Recv PUBREC package, message_id:$message_id", PHP_EOL;
                     echo "-> Send PUBREL package, message_id:$message_id", PHP_EOL;
                 }
@@ -557,7 +553,7 @@ class Client
                 break;
             case Mqtt::CMD_PUBREL:
                 $message_id = $data['message_id'];
-                if ($this->debug) {
+                if ($this->_options['debug']) {
                     echo "<- Recv PUBREL package, message_id:$message_id", PHP_EOL;
                     echo "-> Send PUBCOMP package, message_id:$message_id", PHP_EOL;
                 }
@@ -569,11 +565,11 @@ class Client
             case Mqtt::CMD_PUBACK:
             case Mqtt::CMD_PUBCOMP:
                 $message_id = $data['message_id'];
-                if ($this->debug) {
+                if ($this->_options['debug']) {
                     echo "<- Recv ".($cmd == Mqtt::CMD_PUBACK ? 'PUBACK' : 'PUBCOMP') . " package, message_id:$message_id", PHP_EOL;
                 }
                 if (!empty($this->_outgoing[$message_id])) {
-                    if ($this->debug) {
+                    if ($this->_options['debug']) {
                         echo "-- Trigger PUB callback for message_id:$message_id", PHP_EOL;
                     }
                     $callback = $this->_outgoing[$message_id];
@@ -584,13 +580,13 @@ class Client
             case Mqtt::CMD_SUBACK:
             case Mqtt::CMD_UNSUBACK:
                 $message_id = $data['message_id'];
-                if ($this->debug) {
+                if ($this->_options['debug']) {
                     echo "<- Recv ".($cmd == Mqtt::CMD_SUBACK ? 'SUBACK' : 'UNSUBACK') . " package, message_id:$message_id", PHP_EOL;
                 }
                 $callback = isset($this->_outgoing[$message_id]) ? $this->_outgoing[$message_id] : null;
                 unset($this->_outgoing[$message_id]);
                 if ($callback) {
-                    if ($this->debug) {
+                    if ($this->_options['debug']) {
                         echo "-- Trigger ".($cmd == Mqtt::CMD_SUBACK ? 'SUB' : 'UNSUB') . " callback for message_id:$message_id", PHP_EOL;
                     }
                     if ($cmd === Mqtt::CMD_SUBACK) {
@@ -602,7 +598,7 @@ class Client
                 break;
             case Mqtt::CMD_PINGRESP:
                 $this->_recvPingResponse = true;
-                if ($this->debug) {
+                if ($this->_options['debug']) {
                     echo "<- Recv PINGRESP package", PHP_EOL;
                 }
                 break;
@@ -616,7 +612,7 @@ class Client
      */
     public function onConnectionClose()
     {
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-- Connection closed", PHP_EOL;
         }
         $this->cancelPingTimer();
@@ -657,7 +653,7 @@ class Client
      */
     public function onConnectionBufferFull()
     {
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-- Connection buffer full and close connection", PHP_EOL;
         }
         $this->triggerError(103);
@@ -748,7 +744,7 @@ class Client
     protected function triggerError($code, $callback = null)
     {
         $exception = new \Exception(static::$_errorCodeStringMap[$code], $code);
-        if ($this->debug) {
+        if ($this->_options['debug']) {
             echo "-- Error: ".$exception->getMessage() . PHP_EOL;
         }
         if (!$callback) {
@@ -799,14 +795,14 @@ class Client
         $connection = $this->_connection;
         $this->_pingTimer = Timer::add($ping_interval, function()use($connection){
             if (!$this->_recvPingResponse) {
-                if ($this->debug) {
+                if ($this->_options['debug']) {
                     echo "<- Recv PINGRESP timeout", PHP_EOL;
                     echo "-> Close connection", PHP_EOL;
                 }
                 $this->_connection->close();
                 return;
             }
-            if ($this->debug) {
+            if ($this->_options['debug']) {
                 echo "-> Send PINGREQ package", PHP_EOL;
             }
             $this->_recvPingResponse = false;
@@ -990,9 +986,12 @@ class Client
             $this->_options['bindto'] = $options['bindto'];
         }
 
-        if (!empty($options['ssl'])) {
+        if (isset($options['ssl'])) {
             $this->_options['ssl'] = $options['ssl'];
         }
 
+        if (isset($options['debug'])) {
+            $this->_options['debug'] = !empty($options['debug']);
+        }
     }
 }
