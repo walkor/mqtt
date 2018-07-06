@@ -171,7 +171,7 @@ class Client
         'connect_timeout'  => 30, // 30 seconds, time to wait before a CONNACK is received
         'resubscribe'      => true, // default true, if connection is broken and reconnects, subscribed topics are automatically subscribed again.
         'bindto'           => '', // bindto option, used to specify the IP address that PHP will use to access the network
-        'ssl'              => false, // ssl context
+        'ssl'              => false, // ssl context, see http://php.net/manual/en/context.ssl.php
         'debug'            => false, // debug
     );
 
@@ -190,6 +190,12 @@ class Client
         }
         if ($this->_options['ssl'] && is_array($this->_options['ssl'])) {
             $context['ssl'] = $this->_options['ssl'];
+        }
+        if (strpos($address, 'qmtts') === false) {
+            if (empty($this->_options['ssl'])) {
+                $this->_options['ssl'] = true;
+            }
+            $address = str_replace('mqtts', 'mqtt', $address);
         }
         $this->_remoteAddress = $address;
         $this->_connection    = new AsyncTcpConnection($address, $context);
