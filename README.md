@@ -46,7 +46,6 @@ Worker::runAll();
   * <a href="#subscribe"><code>Client::<b>subscribe()</b></code></a>
   * <a href="#unsubscribe"><code>Client::<b>unsubscribe()</b></code></a>
   * <a href="#disconnect"><code>Client::<b>disconnect()</b></code></a>
-  * <a href="#disconnect"><code>Client::<b>disconnect()</b></code></a>
   * <a href="#close"><code>Client::<b>close()</b></code></a>
   * <a href="#onConnect"><code>callback <b>onConnect</b></code></a>
   * <a href="#onMessage"><code>callback <b>onMessage</b></code></a>
