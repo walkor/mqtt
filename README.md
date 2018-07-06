@@ -99,7 +99,7 @@ Publish a message to a topic
   * `retain` retain flag, `Boolean`, default `false`
   * `dup` mark as duplicate flag, `Boolean`, default `false`
 * `$callback` - `function (\Exception $exception)`, fired when the QoS handling completes,
-  or at the next tick if QoS 0. An error occurs if client is disconnecting.
+  or at the next tick if QoS 0. No error occurs then `$exception` will be null.
   
 <a name="subscribe"></a>
 ### subscribe(mixed $topic, [array $options], [callable $callback])
@@ -123,7 +123,7 @@ the QoS like `array('test1'=> 0, 'test2'=> 1]` to subscribe.
 Unsubscribe from a topic or topics
 
 * `$topic` is a `String` topic or an array of topics to unsubscribe from
-* `$callback` - `function (\Exception $e)`, fired on unsuback. An error occurs if client is disconnecting.
+* `$callback` - `function (\Exception $e)`, fired on unsuback. No error occurs then `$exception` will be null..
 
 <a name="disconnect"></a>
 ### disconnect()
