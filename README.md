@@ -52,6 +52,8 @@ Worker::runAll();
   * <a href="#onError"><code>callback <b>onError</b></code></a>
   * <a href="#onClose"><code>callback <b>onClose</b></code></a>
 
+-------------------------------------------------------
+
 <a name="construct"></a>
 ### __construct (string $address, [array $options])
 
@@ -82,10 +84,14 @@ Create an instance by $address and $options.
     * `ssl` default `false`, it can be set `true` or `ssl context` see http://php.net/manual/en/context.ssl.php
     * `debug` default `false`, set `true` to show debug info
 
+-------------------------------------------------------
+
 <a name="connect"></a>
 ### connect()
 
 Connect to broker specified by the given $address and $options in `__construct($address, $options)`.
+
+-------------------------------------------------------
 
 <a name="publish"></a>
 ### publish(String $topic, String $content, [array $options], [callable $callback])
@@ -101,6 +107,8 @@ Publish a message to a topic
 * `$callback` - `function (\Exception $exception)`, fired when the QoS handling completes,
   or at the next tick if QoS 0. No error occurs then `$exception` will be null.
   
+-------------------------------------------------------
+
 <a name="subscribe"></a>
 ### subscribe(mixed $topic, [array $options], [callable $callback])
 
@@ -117,6 +125,8 @@ the QoS like `array('test1'=> 0, 'test2'=> 1]` to subscribe.
     * `topic` is a subscribed to topic
     * `qos` is the granted qos level on it
 
+-------------------------------------------------------
+
 <a name="unsubscribe"></a>
 ### unsubscribe(mixed $topic, [callable $callback])
 
@@ -125,19 +135,27 @@ Unsubscribe from a topic or topics
 * `$topic` is a `String` topic or an array of topics to unsubscribe from
 * `$callback` - `function (\Exception $e)`, fired on unsuback. No error occurs then `$exception` will be null..
 
+-------------------------------------------------------
+
 <a name="disconnect"></a>
 ### disconnect()
 
 Send DISCONNECT package to broker and close the client.
+
+-------------------------------------------------------
 
 <a name="close"></a>
 ### close()
 
 Close the client without DISCONNECT package.
 
+-------------------------------------------------------
+
 <a name="onConnect"></a>
 ### callback onConnect(Client $mqtt)
 Emitted on successful connection (`CONNACK` package received).
+
+-------------------------------------------------------
 
 <a name="onMessage"></a>
 ### callback onMessage(String $topic, String $content, Client $mqtt)
@@ -148,13 +166,24 @@ Emitted when the client receives a publish packet
 * `$content` payload of the received packet
 * `$mqtt` Client instance.
 
+-------------------------------------------------------
+
 <a name="onError"></a>
 ### callback onError(\Exception $exception)
 Emitted when something wrong for example the client cannot connect broker.
 
+-------------------------------------------------------
+
 <a name="onClose"></a>
 ### callback onClose()
 Emitted when connection closed.
+
+-------------------------------------------------------
+
+
+# License
+
+MIT
 
 
 
