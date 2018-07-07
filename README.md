@@ -5,7 +5,7 @@ The MQTT client for PHP based on workerman.
 composer require workerman/mqtt
 
 # Example
-Subscribe.
+**subscribe.php**
 ```php
 <?php
 require __DIR__ . '/vendor/autoload.php';
@@ -23,7 +23,9 @@ $worker->onWorkerStart = function(){
 };
 Worker::runAll();
 ```
-Publish.
+Run with command ```php subscribe.php start```
+
+**publish.php**
 ```php
 <?php
 require __DIR__ . '/../vendor/autoload.php';
@@ -38,6 +40,9 @@ $worker->onWorkerStart = function(){
 };
 Worker::runAll();
 ```
+
+Run with command ```php publish.php start```
+
 ## API
 
   * <a href="#construct"><code>Client::<b>__construct()</b></code></a>
