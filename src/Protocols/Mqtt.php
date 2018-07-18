@@ -297,11 +297,10 @@ class Mqtt
                 $qos        = ord($buffer[0]) >> 1 & 0x3;
                 $retain     = ord($buffer[0]) & 0x1;
                 $topic      = static::readString($body);
-                $content    = $body;
                 if ($qos) {
                     $message_id = static::readShortInt($body);
                 }
-                $package = array('cmd' => $cmd, 'topic' => $topic, 'content' => $content, 'dup' => $dup, 'qos' => $qos, 'retain' => $retain);
+                $package = array('cmd' => $cmd, 'topic' => $topic, 'content' => $body, 'dup' => $dup, 'qos' => $qos, 'retain' => $retain);
                 if ($qos) {
                     $package['message_id'] = $message_id;
                 }
