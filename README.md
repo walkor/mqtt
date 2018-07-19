@@ -120,7 +120,7 @@ Publish a message to a topic
 Subscribe to a topic or topics
 
 * `$topic` is a `String` topic or an `Array` which has as keys the topic name and as value
-the QoS like `array('test1'=> 0, 'test2'=> 1]` to subscribe.
+the QoS like `array('test1'=> 0, 'test2'=> 1)` to subscribe.
 * `$options` is the options to subscribe with, including:
   * `qos` qos subscription level, default 0
 * `$callback` - `function (\Exception $exception, array $granted)`
