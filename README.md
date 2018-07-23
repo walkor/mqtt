@@ -1,5 +1,5 @@
 # MQTT
-The MQTT client for PHP based on workerman.
+Asynchronous MQTT client for PHP based on workerman.
 
 # Installation
 composer require workerman/mqtt
