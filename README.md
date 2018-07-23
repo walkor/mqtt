@@ -4,6 +4,9 @@ The MQTT client for PHP based on workerman.
 # Installation
 composer require workerman/mqtt
 
+# 文档
+[中文文档](http://doc.workerman.net/components/workemran-mqtt.html)
+
 # Example
 **subscribe.php**
 ```php
