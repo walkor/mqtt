@@ -507,7 +507,9 @@ class Client
                         call_user_func($this->onReconnect, $this);
                     }
                 }
-                $this->setPingTimer($this->_options['keepalive']);
+                if ($this->_options['keepalive']) {
+                    $this->setPingTimer($this->_options['keepalive']);
+                }
                 $this->cancelConnectionTimeout();
                 return;
             //['cmd' => $cmd, 'topic' => $topic, 'content' => $content]
