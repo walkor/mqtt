@@ -182,7 +182,10 @@ class Client
      */
     public function __construct($address, $options = array())
     {
-        class_alias('\Workerman\Mqtt\Protocols\Mqtt', '\Workerman\Protocols\Mqtt');
+        $class_name = '\Workerman\Protocols\Mqtt';
+        if (!class_exists($class_name)) {
+            class_alias('\Workerman\Mqtt\Protocols\Mqtt', $class_name);
+        }
         $this->setOptions($options);
         $context = array();
         if ($this->_options['bindto']) {
