@@ -15,7 +15,7 @@ namespace Workerman\Mqtt;
 
 use \Workerman\Connection\AsyncTcpConnection;
 use \Workerman\Protocols\Mqtt;
-use \Workerman\Lib\Timer;
+use \Workerman\Timer;
 
 /**
  * Class Client
