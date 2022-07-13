@@ -1,0 +1,1 @@
+1. Exception instead of RuntimeException

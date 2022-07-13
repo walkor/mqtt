@@ -1,10 +1,33 @@
 {
     "name"  : "workerman/mqtt",
     "type"  : "library",
-    "homepage": "http://www.workerman.net",
+    "keywords": [
+        "event-loop",
+        "php",
+        "mqtt",
+        "workerman",
+        "mqtt_client",
+        "mqtt3",
+        "mqtt5.0"
+    ],
+    "homepage": "https://www.workerman.net",
     "license" : "MIT",
+    "authors": [
+        {
+            "name": "walkor",
+            "email": "walkor@workerman.net",
+            "homepage": "https://www.workerman.net",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "email": "walkor@workerman.net"
+    },
     "require": {
         "workerman/workerman" : ">=3.3.0"
+    },
+    "suggest": {
+        "ext-event": "For better performance. "
     },
     "autoload": {
         "psr-4": {"Workerman\\Mqtt\\": "./src"}

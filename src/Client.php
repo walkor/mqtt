@@ -14,6 +14,8 @@
 namespace Workerman\Mqtt;
 
 use \Workerman\Connection\AsyncTcpConnection;
+use Workerman\Mqtt\Consts\MQTTConst;
+use Workerman\Mqtt\Consts\ReasonCodeConst;
 use \Workerman\Protocols\Mqtt;
 use \Workerman\Timer;
 
@@ -115,6 +117,11 @@ class Client
     protected $_resubscribeTopics = array();
 
     /**
+     * @var array
+     */
+    protected $_resubscribeProperties = array();
+
+    /**
      * @var int
      */
     protected $_checkConnectionTimeoutTimer = 0;
@@ -173,20 +180,31 @@ class Client
         'bindto'           => '', // bindto option, used to specify the IP address that PHP will use to access the network
         'ssl'              => false, // ssl context, see http://php.net/manual/en/context.ssl.php
         'debug'            => false, // debug
+        'properties'       => [],  // properties, MQTT5 need
     );
 
     /**
      * Client constructor.
      * @param $address
      * @param array $options
+     * @throws \Exception
      */
-    public function __construct($address, $options = array())
+    public function __construct($address, array $options = array())
     {
-        $class_name = '\Workerman\Protocols\Mqtt';
-        if (!class_exists($class_name)) {
-            class_alias('\Workerman\Mqtt\Protocols\Mqtt', $class_name);
-        }
         $this->setOptions($options);
+
+        $class_name = '\Workerman\Protocols\Mqtt';
+        if ((int)$this->_options['protocol_level'] === 5) {
+            if (!class_exists($class_name)) {
+                class_alias('\Workerman\Mqtt\Protocols\Mqtt5', $class_name);
+            }
+        } else{
+            if (!class_exists($class_name)) {
+                class_alias('\Workerman\Mqtt\Protocols\Mqtt', $class_name);
+            }
+        }
+
+
         $context = array();
         if ($this->_options['bindto']) {
             $context['socket'] = array('bindto' => $this->_options['bindto']);
@@ -194,12 +212,20 @@ class Client
         if ($this->_options['ssl'] && is_array($this->_options['ssl'])) {
             $context['ssl'] = $this->_options['ssl'];
         }
+
         if (strpos($address, 'mqtts') === 0) {
             if (empty($this->_options['ssl'])) {
                 $this->_options['ssl'] = true;
             }
             $address = str_replace('mqtts', 'mqtt', $address);
         }
+
+//        if ((int)$this->_options['protocol_level'] === 5) {
+//            if (strpos($address, 'mqtt') === 0) {
+//                $address = str_replace('mqtt', 'mqtt5', $address);
+//            }
+//        }
+
         $this->_remoteAddress = $address;
         $this->_connection    = new AsyncTcpConnection($address, $context);
         $this->onReconnect    = array($this, 'onMqttReconnect');
@@ -234,8 +260,9 @@ class Client
      * @param $topic
      * @param array $options
      * @param callable $callback
+     * @param array $callback
      */
-    public function subscribe($topic, $options = array(), $callback = null)
+    public function subscribe($topic, array $options = array(), $callback = null, $properties=[])
     {
         if ($this->checkDisconnecting($callback)) {
             return;
@@ -244,9 +271,23 @@ class Client
         if (is_array($topic)) {
             $topics = $topic;
         } else {
-            $qos = !is_callable($options) && isset($options['qos']) ? $options['qos'] : 0;
-            $topics = array($topic => $qos);
+            if ((int)$this->_options['protocol_level'] === 5) {
+                $qos = !is_callable($options) && isset($options['qos']) ? $options['qos'] : 0;
+                $no_local = !is_callable($options) && isset($options['no_local']) ? $options['no_local'] : null;
+                $retain_as_published = !is_callable($options) && isset($options['retain_as_published']) ? $options['retain_as_published'] : null;
+                $retain_handling = !is_callable($options) && isset($options['retain_handling']) ? $options['retain_handling'] : null;
+                $topics = array($topic => [
+                    'qos' => $qos,
+                    'no_local' => $no_local,
+                    'retain_as_published' => $retain_as_published,
+                    'retain_handling' => $retain_handling,
+                ]);
+            } else {
+                $qos = !is_callable($options) && isset($options['qos']) ? $options['qos'] : 0;
+                $topics = array($topic => $qos);
+            }
         }
+
 
         $args = func_get_args();
 
@@ -263,16 +304,19 @@ class Client
 
         if ($this->_options['resubscribe']) {
             $this->_resubscribeTopics += $topics;
+            $this->_resubscribeProperties += $properties;
+
         }
 
         $package = array(
-            'cmd'        => Mqtt::CMD_SUBSCRIBE,
+            'cmd'        => MQTTConst::CMD_SUBSCRIBE,
             'topics'     => $topics,
             'message_id' => $this->incrMessageId(),
+            'properties' => $properties,
         );
 
         if ($this->_options['debug']) {
-            echo "-> Send SUBSCRIBE package, topic:".implode(',', array_keys($topics))." message_id:{$package['message_id']}", PHP_EOL;
+            echo "-> Send SUBSCRIBE package, topic:".implode(',', array_keys($topics))." message_id:{$package['message_id']}"." properties:".json_encode($properties), PHP_EOL;
         }
         $this->sendPackage($package);
 
@@ -299,7 +343,7 @@ class Client
      *
      * @param $topic
      */
-    public function unsubscribe($topic, $callback = null)
+    public function unsubscribe($topic, $callback = null, array $properties = [])
     {
         if ($this->checkDisconnecting($callback)) {
             return;
@@ -309,21 +353,24 @@ class Client
             $this->triggerError(240);
             return;
         }
-        foreach ($topics as $topic) {
-            if (isset($this->_resubscribeTopics[$topic])) {
-                unset($this->_resubscribeTopics[$topic]);
+        foreach ($topics as $_topic) {
+            if (isset($this->_resubscribeTopics[$_topic])) {
+                unset($this->_resubscribeTopics[$_topic]);
             }
         }
+        $this->_resubscribeProperties = [];
+
         $package = array(
-            'cmd'        => Mqtt::CMD_UNSUBSCRIBE,
+            'cmd'        => MQTTConst::CMD_UNSUBSCRIBE,
             'topics'     => $topics,
             'message_id' => $this->incrMessageId(),
+            'properties' => $properties,
         );
         if ($callback) {
             $this->_outgoing[$package['message_id']] = $callback;
         }
         if ($this->_options['debug']) {
-            echo "-> Send UNSUBSCRIBE package, topic:".implode(',', $topics)." message_id:{$package['message_id']}", PHP_EOL;
+            echo "-> Send UNSUBSCRIBE package, topic:".implode(',', $topics)." message_id:{$package['message_id']}"." properties:".json_encode($properties), PHP_EOL;
         }
         $this->sendPackage($package);
     }
@@ -335,13 +382,22 @@ class Client
      * @param $content
      * @param array $options
      * @param callable $callback
+     * @param array $properties
      */
-    public function publish($topic, $content, $options = array(), $callback = null)
+    public function publish($topic, $content, $options = array(), $callback = null, $properties=[])
     {
         if ($this->checkDisconnecting($callback)) {
             return;
         }
-        static::isValidTopic($topic);
+        if ((int)$this->_options['protocol_level'] === 5) {
+            if (empty($topic)) {
+                if (!isset($properties['topic_alias']) || empty($properties['topic_alias'])) {
+                    throw new \RuntimeException('Topic cannot be empty or need to set topic_alias');
+                }
+            }
+        } else {
+            static::isValidTopic($topic);
+        }
         $qos    = 0;
         $retain = 0;
         $dup    = 0;
@@ -359,12 +415,13 @@ class Client
         }
 
         $package = array(
-            'cmd'     => Mqtt::CMD_PUBLISH,
+            'cmd'     => MQTTConst::CMD_PUBLISH,
             'topic'   => $topic,
             'content' => $content,
             'retain'  => $retain,
             'qos'     => $qos,
             'dup'     => $dup,
+            'properties' => $properties,
         );
 
         if ($qos) {
@@ -376,7 +433,7 @@ class Client
 
         if ($this->_options['debug']) {
             $message_id = isset($package['message_id']) ? $package['message_id'] : '';
-            echo "-> Send PUBLISH package, topic:$topic content:$content retain:$retain qos:$qos dup:$dup message_id:$message_id", PHP_EOL;
+            echo "-> Send PUBLISH package, topic:$topic content:$content retain:$retain qos:$qos dup:$dup message_id:$message_id"." properties:".json_encode($properties), PHP_EOL;
         }
 
         $this->sendPackage($package);
@@ -385,13 +442,21 @@ class Client
     /**
      * disconnect
      */
-    public function disconnect()
+    public function disconnect(int $code = ReasonCodeConst::NORMAL_DISCONNECTION, array $properties = [])
     {
-        $this->sendPackage(array('cmd' => Mqtt::CMD_DISCONNECT));
+        $this->sendPackage(array('cmd' => MQTTConst::CMD_DISCONNECT,'code' => $code, 'properties' => $properties));
         if ($this->_options['debug']) {
             echo "-> Send DISCONNECT package", PHP_EOL;
         }
         $this->close();
+    }
+
+    /**
+     * auth
+     */
+    public function auth(int $code = ReasonCodeConst::SUCCESS, array $properties = [])
+    {
+        $this->sendPackage(['cmd' => MQTTConst::CMD_AUTH, 'code' => $code, 'properties' => $properties]);
     }
 
     /**
@@ -436,7 +501,7 @@ class Client
         }
         //['cmd'=>1, 'clean_session'=>x, 'will'=>['qos'=>x, 'retain'=>x, 'topic'=>x, 'content'=>x],'username'=>x, 'password'=>x, 'keepalive'=>x, 'protocol_name'=>x, 'protocol_level'=>x, 'client_id' => x]
         $package = array(
-            'cmd'            => Mqtt::CMD_CONNECT,
+            'cmd'            => MQTTConst::CMD_CONNECT,
             'clean_session'  => $this->_options['clean_session'],
             'username'       => $this->_options['username'],
             'password'       => $this->_options['password'],
@@ -444,6 +509,7 @@ class Client
             'protocol_name'  => $this->_options['protocol_name'],
             'protocol_level' => $this->_options['protocol_level'],
             'client_id'      => $this->_options['client_id'],
+            'properties'     => $this->_options['properties'] // MQTT5 中所需要的属性
         );
         if (isset($this->_options['will'])) {
             $package['will'] = $this->_options['will'];
@@ -463,9 +529,10 @@ class Client
     {
         if ($this->_options['clean_session'] && $this->_options['resubscribe'] && $this->_resubscribeTopics) {
             $package = array(
-                'cmd'        => Mqtt::CMD_SUBSCRIBE,
+                'cmd'        => MQTTConst::CMD_SUBSCRIBE,
                 'topics'     => $this->_resubscribeTopics,
                 'message_id' => $this->incrMessageId(),
+                'properties' => $this->_resubscribeProperties ?? []
             );
             $this->sendPackage($package);
             if ($this->_options['debug']) {
@@ -485,10 +552,10 @@ class Client
     {
         $cmd = $data['cmd'];
         switch ($cmd) {
-            case Mqtt::CMD_CONNACK:
-                $code = $data['code'];
-                if ($code != 0) {
-                    $message = static::$_errorCodeStringMap[$code];
+            case MQTTConst::CMD_CONNACK:
+                $code = (int)$data['code'];
+                if ($code !== 0) {
+                    $message = $this->getErrorCodeString($code);
                     if ($this->_options['debug']) {
                         echo "<- Recv CONNACK package but get error " . $message . PHP_EOL;
                     }
@@ -496,9 +563,11 @@ class Client
                     $this->_connection->destroy();
                     return;
                 }
+
                 if ($this->_options['debug']) {
                     echo "<- Recv CONNACK package, MQTT connect success", PHP_EOL;
                 }
+
                 $this->_state = static::STATE_ESTABLISHED;
                 if ($this->_firstConnect) {
                     if ($this->onConnect) {
@@ -516,18 +585,23 @@ class Client
                 $this->cancelConnectionTimeout();
                 return;
             //['cmd' => $cmd, 'topic' => $topic, 'content' => $content]
-            case Mqtt::CMD_PUBLISH:
+            case MQTTConst::CMD_PUBLISH:
                 $topic      = $data['topic'];
                 $content    = $data['content'];
                 $qos        = $data['qos'];
-                $message_id = isset($data['message_id']) ? $data['message_id'] : '';
+                $message_id = $data['message_id'] ?? '';
+                $properties = $data['properties'] ?? [];
                 if ($this->_options['debug']) {
-                    echo "<- Recv PUBLISH package, message_id:$message_id qos:$qos topic:$topic content:$content", PHP_EOL;
+                    echo "<- Recv PUBLISH package, message_id:$message_id qos:$qos topic:$topic content:$content properties:".json_encode($properties), PHP_EOL;
                 }
                 call_user_func($this->onMessage, $topic, $content, $this);
                 // Connection may be closed in onMessage callback.
                 if ($this->_state !== static::STATE_ESTABLISHED) {
                     return;
+                }
+                $extra_package = [];
+                if ((int)$this->_options['protocol_level'] === 5) {
+                    $extra_package = ['properties' => $properties];
                 }
                 switch ($qos) {
                     case 0:
@@ -537,47 +611,57 @@ class Client
                             echo "-> Send PUBACK package, message_id:$message_id", PHP_EOL;
                         }
                         $this->sendPackage(array(
-                            'cmd'        => Mqtt::CMD_PUBACK,
-                            'message_id' => $message_id
-                        ));
+                            'cmd'        => MQTTConst::CMD_PUBACK,
+                            'message_id' => $message_id,
+                        ) + $extra_package);
                         break;
                     case 2:
                         if ($this->_options['debug']) {
                             echo "-> Send PUBREC package, message_id:$message_id", PHP_EOL;
                         }
                         $this->sendPackage(array(
-                            'cmd'        => Mqtt::CMD_PUBREC,
-                            'message_id' => $message_id
-                        ));
+                            'cmd'        => MQTTConst::CMD_PUBREC,
+                            'message_id' => $message_id,
+                        ) + $extra_package);
                 }
                 return;
-            case Mqtt::CMD_PUBREC:
+            case MQTTConst::CMD_PUBREC:
                 $message_id = $data['message_id'];
+                $properties = $data['properties'] ?? [];
                 if ($this->_options['debug']) {
                     echo "<- Recv PUBREC package, message_id:$message_id", PHP_EOL;
                     echo "-> Send PUBREL package, message_id:$message_id", PHP_EOL;
                 }
+                $extra_package = [];
+                if ((int)$this->_options['protocol_level'] === 5) {
+                    $extra_package = ['properties' => $properties];
+                }
                 $this->sendPackage(array(
-                    'cmd'        => Mqtt::CMD_PUBREL,
+                    'cmd'        => MQTTConst::CMD_PUBREL,
                     'message_id' => $data['message_id']
-                ));
+                ) + $extra_package);
                 break;
-            case Mqtt::CMD_PUBREL:
+            case MQTTConst::CMD_PUBREL:
                 $message_id = $data['message_id'];
+                $properties = $data['properties'] ?? [];
                 if ($this->_options['debug']) {
                     echo "<- Recv PUBREL package, message_id:$message_id", PHP_EOL;
                     echo "-> Send PUBCOMP package, message_id:$message_id", PHP_EOL;
                 }
+                $extra_package = [];
+                if ((int)$this->_options['protocol_level'] === 5) {
+                    $extra_package = ['properties' => $properties];
+                }
                 $this->sendPackage(array(
-                    'cmd'        => Mqtt::CMD_PUBCOMP,
+                    'cmd'        => MQTTConst::CMD_PUBCOMP,
                     'message_id' => $message_id
-                ));
+                ) + $extra_package);
                 break;
-            case Mqtt::CMD_PUBACK:
-            case Mqtt::CMD_PUBCOMP:
+            case MQTTConst::CMD_PUBACK:
+            case MQTTConst::CMD_PUBCOMP:
                 $message_id = $data['message_id'];
                 if ($this->_options['debug']) {
-                    echo "<- Recv ".($cmd == Mqtt::CMD_PUBACK ? 'PUBACK' : 'PUBCOMP') . " package, message_id:$message_id", PHP_EOL;
+                    echo "<- Recv ".($cmd === MQTTConst::CMD_PUBACK ? 'PUBACK' : 'PUBCOMP') . " package, message_id:$message_id", PHP_EOL;
                 }
                 if (!empty($this->_outgoing[$message_id])) {
                     if ($this->_options['debug']) {
@@ -588,26 +672,26 @@ class Client
                     call_user_func($callback, null);
                 }
                 break;
-            case Mqtt::CMD_SUBACK:
-            case Mqtt::CMD_UNSUBACK:
+            case MQTTConst::CMD_SUBACK:
+            case MQTTConst::CMD_UNSUBACK:
                 $message_id = $data['message_id'];
                 if ($this->_options['debug']) {
-                    echo "<- Recv ".($cmd == Mqtt::CMD_SUBACK ? 'SUBACK' : 'UNSUBACK') . " package, message_id:$message_id", PHP_EOL;
+                    echo "<- Recv ".($cmd === MQTTConst::CMD_SUBACK ? 'SUBACK' : 'UNSUBACK') . " package, message_id:$message_id", PHP_EOL;
                 }
-                $callback = isset($this->_outgoing[$message_id]) ? $this->_outgoing[$message_id] : null;
+                $callback = $this->_outgoing[$message_id] ?? null;
                 unset($this->_outgoing[$message_id]);
                 if ($callback) {
                     if ($this->_options['debug']) {
-                        echo "-- Trigger ".($cmd == Mqtt::CMD_SUBACK ? 'SUB' : 'UNSUB') . " callback for message_id:$message_id", PHP_EOL;
+                        echo "-- Trigger ".($cmd === MQTTConst::CMD_SUBACK ? 'SUB' : 'UNSUB') . " callback for message_id:$message_id", PHP_EOL;
                     }
-                    if ($cmd === Mqtt::CMD_SUBACK) {
+                    if ($cmd === MQTTConst::CMD_SUBACK) {
                         call_user_func($callback, null, $data['codes']);
                     } else {
                         call_user_func($callback, null);
                     }
                 }
                 break;
-            case Mqtt::CMD_PINGRESP:
+            case MQTTConst::CMD_PINGRESP:
                 $this->_recvPingResponse = true;
                 if ($this->_options['debug']) {
                     echo "<- Recv PINGRESP package", PHP_EOL;
@@ -729,7 +813,7 @@ class Client
         if (empty($topics)) {
             return 'array()';
         }
-        foreach ($topics as $topic) {
+        foreach ($topics as $topic => $qos) {
             if(!static::isValidTopic($topic)) {
                 return $topic;
             }
@@ -754,7 +838,7 @@ class Client
      */
     protected function triggerError($code, $callback = null)
     {
-        $exception = new \Exception(static::$_errorCodeStringMap[$code], $code);
+        $exception = new \Exception($this->getErrorCodeString($code), $code);
         if ($this->_options['debug']) {
             echo "-- Error: ".$exception->getMessage() . PHP_EOL;
         }
@@ -764,6 +848,11 @@ class Client
             };
         }
         call_user_func($callback, $exception);
+    }
+
+    protected function getErrorCodeString(int $code)
+    {
+        return  static::$_errorCodeStringMap[$code] ?? ReasonCodeConst::getReason($code);
     }
 
     /**
@@ -817,7 +906,7 @@ class Client
                 echo "-> Send PINGREQ package", PHP_EOL;
             }
             $this->_recvPingResponse = false;
-            $connection->send(array('cmd' => Mqtt::CMD_PINGREQ));
+            $connection->send(array('cmd' => MQTTConst::CMD_PINGREQ));
         });
     }
 
@@ -929,8 +1018,8 @@ class Client
 
         if (isset($options['protocol_level'])) {
             $protocol_level = (int)$options['protocol_level'];
-            if ($this->_options['protocol_name'] === 'MQTT' && $protocol_level !== 4) {
-                throw new \Exception('Bad protocol_level of options, expected 4 for protocol_name MQTT but ' . $options['protocol_level'] . ' provided.');
+            if ($this->_options['protocol_name'] === 'MQTT' && !in_array($protocol_level, [4, 5]) ) {
+                throw new \Exception('Bad protocol_level of options, expected (4 or 5) for protocol_name MQTT but ' . $options['protocol_level'] . ' provided.');
             }
             if ($this->_options['protocol_name'] === 'MQIsdp' && $protocol_level !== 3) {
                 throw new \Exception('Bad protocol_level of options, expected 3 for protocol_name MQTT but ' . $options['protocol_level'] . ' provided.');
@@ -947,6 +1036,7 @@ class Client
             $this->_options['client_id'] = $this->createRandomClientId();
         }
 
+        // 遗嘱消息，当客户端断线后Broker会自动发送遗嘱消息给其它客户端
         if (isset($options['will'])) {
             $will = $options['will'];
             $required = array('qos', 'topic', 'content');
@@ -967,6 +1057,7 @@ class Client
             $this->_options['will'] = $options['will'];
         }
 
+        // 重连时间间隔，默认 1 秒，0代表不重连
         if (isset($options['reconnect_period'])) {
             $reconnect_period = (int)$options['reconnect_period'];
             if (!static::isString($reconnect_period)) {
@@ -1003,6 +1094,16 @@ class Client
 
         if (isset($options['debug'])) {
             $this->_options['debug'] = !empty($options['debug']);
+        }
+
+        // MQTT5 中所需要的属性
+        if (!empty($options['properties'])) {
+            $this->_options['properties'] = $options['properties'];
+            if (empty($this->_options['protocol_level'])) {
+                $this->_options['protocol_level'] = 5;
+            }
+        } else {
+            $this->_options['properties'] = [];
         }
     }
 }
