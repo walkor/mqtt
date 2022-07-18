@@ -228,6 +228,8 @@ class Client
 
         $this->_remoteAddress = $address;
         $this->_connection    = new AsyncTcpConnection($address, $context);
+        // support tcp address
+        $this->_connection->protocol = '\Workerman\Protocols\Mqtt';
         $this->onReconnect    = array($this, 'onMqttReconnect');
         $this->onMessage      = function(){};
         if ($this->_options['ssl']) {
