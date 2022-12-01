@@ -30,6 +30,8 @@ $worker->onWorkerStart = function(){
                 [
                     'topic_alias' => 1,
                     'message_expiry_interval' => 12,
+                    'correlation_data' => 'your_correlation_data',
+                    'response_topic' => 'your_response_topic',
                 ]
             );
         });
