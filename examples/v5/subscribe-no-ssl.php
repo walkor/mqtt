@@ -44,6 +44,9 @@ $worker->onWorkerStart = function(){
                 'retain_handling' => 2,
             ],
         ];
+
+        $mqtt->subscribe($topics);
+
         $mqtt->subscribe('workerman', [
             'qos' => 0,
             'no_local' => false,
