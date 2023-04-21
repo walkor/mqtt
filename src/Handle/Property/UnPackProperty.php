@@ -3,7 +3,7 @@
 namespace Workerman\Mqtt\Handle\Property;
 
 use Workerman\Mqtt\Consts\PropertyConst as Property;
-use Workerman\Mqtt\Handle\DecodeTrait;
+use Workerman\Mqtt\Handle\Decoder;
 
 class UnPackProperty
 {
@@ -17,29 +17,29 @@ class UnPackProperty
                 $body = substr($body, 1);
                 switch ($property) {
                     case Property::SESSION_EXPIRY_INTERVAL:
-                        $properties[$key] = DecodeTrait::longInt($body);
+                        $properties[$key] = Decoder::longInt($body);
                         $length -= 5;
                         break;
                     case Property::AUTHENTICATION_METHOD:
                     case Property::AUTHENTICATION_DATA:
-                        $properties[$key] = DecodeTrait::readString($body);
+                        $properties[$key] = Decoder::readString($body);
                         $length -= 3;
                         $length -= strlen($properties[$key]);
                         break;
                     case Property::REQUEST_PROBLEM_INFORMATION:
                     case Property::REQUEST_RESPONSE_INFORMATION:
-                        $properties[$key] = DecodeTrait::byte($body);
+                        $properties[$key] = Decoder::byte($body);
                         $length -= 2;
                         break;
                     case Property::RECEIVE_MAXIMUM:
                     case Property::TOPIC_ALIAS_MAXIMUM:
                     case Property::MAXIMUM_PACKET_SIZE:
-                        $properties[$key] = DecodeTrait::shortInt($body);
+                        $properties[$key] = Decoder::shortInt($body);
                         $length -= 3;
                         break;
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);
@@ -66,23 +66,23 @@ class UnPackProperty
                 switch ($property) {
                     case Property::MESSAGE_EXPIRY_INTERVAL:
                     case Property::WILL_DELAY_INTERVAL:
-                        $properties[$key] = DecodeTrait::longInt($body);
+                        $properties[$key] = Decoder::longInt($body);
                         $length -= 5;
                         break;
                     case Property::CONTENT_TYPE:
                     case Property::RESPONSE_TOPIC:
                     case Property::CORRELATION_DATA:
-                        $properties[$key] = DecodeTrait::readString($body);
+                        $properties[$key] = Decoder::readString($body);
                         $length -= 3;
                         $length -= strlen($properties[$key]);
                         break;
                     case Property::PAYLOAD_FORMAT_INDICATOR:
-                        $properties[$key] = DecodeTrait::byte($body);
+                        $properties[$key] = Decoder::byte($body);
                         $length -= 2;
                         break;
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);
@@ -109,13 +109,13 @@ class UnPackProperty
                 switch ($property) {
                     case Property::SESSION_EXPIRY_INTERVAL:
                     case Property::MAXIMUM_PACKET_SIZE:
-                        $properties[$key] = DecodeTrait::longInt($body);
+                        $properties[$key] = Decoder::longInt($body);
                         $length -= 5;
                         break;
                     case Property::SERVER_KEEP_ALIVE:
                     case Property::RECEIVE_MAXIMUM:
                     case Property::TOPIC_ALIAS_MAXIMUM:
-                        $properties[$key] = DecodeTrait::shortInt($body);
+                        $properties[$key] = Decoder::shortInt($body);
                         $length -= 3;
                         break;
                     case Property::ASSIGNED_CLIENT_IDENTIFIER:
@@ -124,7 +124,7 @@ class UnPackProperty
                     case Property::RESPONSE_INFORMATION:
                     case Property::SERVER_REFERENCE:
                     case Property::REASON_STRING:
-                        $properties[$key] = DecodeTrait::readString($body);
+                        $properties[$key] = Decoder::readString($body);
                         $length -= 3;
                         $length -= strlen($properties[$key]);
                         break;
@@ -133,12 +133,12 @@ class UnPackProperty
                     case Property::WILDCARD_SUBSCRIPTION_AVAILABLE:
                     case Property::SUBSCRIPTION_IDENTIFIER_AVAILABLE:
                     case Property::SHARED_SUBSCRIPTION_AVAILABLE:
-                        $properties[$key] = DecodeTrait::byte($body);
+                        $properties[$key] = Decoder::byte($body);
                         $length -= 2;
                         break;
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);
@@ -164,27 +164,27 @@ class UnPackProperty
                 $body = substr($body, 1);
                 switch ($property) {
                     case Property::MESSAGE_EXPIRY_INTERVAL:
-                        $properties[$key] = DecodeTrait::longInt($body);
+                        $properties[$key] = Decoder::longInt($body);
                         $length -= 5;
                         break;
                     case Property::TOPIC_ALIAS:
-                        $properties[$key] = DecodeTrait::shortInt($body);
+                        $properties[$key] = Decoder::shortInt($body);
                         $length -= 3;
                         break;
                     case Property::CONTENT_TYPE:
                     case Property::RESPONSE_TOPIC:
                     case Property::CORRELATION_DATA:
-                        $properties[$key] = DecodeTrait::readString($body);
+                        $properties[$key] = Decoder::readString($body);
                         $length -= 3;
                         $length -= strlen($properties[$key]);
                         break;
                     case Property::PAYLOAD_FORMAT_INDICATOR:
-                        $properties[$key] = DecodeTrait::byte($body);
+                        $properties[$key] = Decoder::byte($body);
                         $length -= 2;
                         break;
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);
@@ -192,7 +192,7 @@ class UnPackProperty
                         break;
                     case Property::SUBSCRIPTION_IDENTIFIER:
                         $length -= 1;
-                        $properties[$key] = DecodeTrait::varInt($body, $len);
+                        $properties[$key] = Decoder::varInt($body, $len);
                         $length -= $len;
                         break;
                 }
@@ -215,13 +215,13 @@ class UnPackProperty
                 $body = substr($body, 1);
                 switch ($property) {
                     case Property::REASON_STRING:
-                        $properties[$key] = DecodeTrait::readString($body);
+                        $properties[$key] = Decoder::readString($body);
                         $length -= 3;
                         $length -= strlen($properties[$key]);
                         break;
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);
@@ -247,8 +247,8 @@ class UnPackProperty
                 $body = substr($body, 1);
                 switch ($property) {
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);
@@ -256,7 +256,7 @@ class UnPackProperty
                         break;
                     case Property::SUBSCRIPTION_IDENTIFIER:
                         $length -= 1;
-                        $properties[$key] = DecodeTrait::varInt($body, $len);
+                        $properties[$key] = Decoder::varInt($body, $len);
                         $length -= $len;
                         break;
                 }
@@ -278,8 +278,8 @@ class UnPackProperty
                 $body = substr($body, 1);
                 switch ($property) {
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);
@@ -305,18 +305,18 @@ class UnPackProperty
                 $body = substr($body, 1);
                 switch ($property) {
                     case Property::SESSION_EXPIRY_INTERVAL:
-                        $properties[$key] = DecodeTrait::longInt($body);
+                        $properties[$key] = Decoder::longInt($body);
                         $length -= 5;
                         break;
                     case Property::SERVER_REFERENCE:
                     case Property::REASON_STRING:
-                        $properties[$key] = DecodeTrait::readString($body);
+                        $properties[$key] = Decoder::readString($body);
                         $length -= 3;
                         $length -= strlen($properties[$key]);
                         break;
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);
@@ -344,13 +344,13 @@ class UnPackProperty
                     case Property::AUTHENTICATION_METHOD:
                     case Property::AUTHENTICATION_DATA:
                     case Property::REASON_STRING:
-                        $properties[$key] = DecodeTrait::readString($body);
+                        $properties[$key] = Decoder::readString($body);
                         $length -= 3;
                         $length -= strlen($properties[$key]);
                         break;
                     case Property::USER_PROPERTY:
-                        $userKey = DecodeTrait::readString($body);
-                        $userValue = DecodeTrait::readString($body);
+                        $userKey = Decoder::readString($body);
+                        $userValue = Decoder::readString($body);
                         $properties[$userKey] = $userValue;
                         $length -= 5;
                         $length -= strlen($userKey);

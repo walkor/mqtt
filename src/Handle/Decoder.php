@@ -4,7 +4,7 @@ namespace Workerman\Mqtt\Handle;
 
 use Workerman\Mqtt\Consts\MQTTConst;
 
-trait DecodeTrait
+class Decoder
 {
     /**
      * Get cmd.

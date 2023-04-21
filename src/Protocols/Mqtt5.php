@@ -15,9 +15,9 @@
 namespace Workerman\Mqtt\Protocols;
 
 use Workerman\Mqtt\Consts\MQTTConst;
-use Workerman\Mqtt\Handle\DecodeTrait;
+use Workerman\Mqtt\Handle\Decoder;
 use Workerman\Mqtt\Handle\DecodeV5;
-use Workerman\Mqtt\Handle\EncodeTrait;
+use Workerman\Mqtt\Handle\Encoder;
 use Workerman\Mqtt\Handle\EncodeV5;
 
 /**
@@ -39,7 +39,7 @@ class Mqtt5
     public static function input(string $buffer)
     {
         $length = strlen($buffer);
-        $body_length = DecodeTrait::getBodyLength($buffer, $head_bytes);
+        $body_length = Decoder::getBodyLength($buffer, $head_bytes);
         $total_length = $body_length + $head_bytes;
         if ($length < $total_length) {
             return 0;
@@ -100,7 +100,7 @@ class Mqtt5
             // ['cmd'=>x]
             case MQTTConst::CMD_PINGREQ;
             case MQTTConst::CMD_PINGRESP:
-                $package = EncodeTrait::packHead($cmd, 0);
+                $package = Encoder::packHead($cmd, 0);
                 break;
             case MQTTConst::CMD_DISCONNECT:
                 $package = EncodeV5::disconnect($data);
@@ -127,8 +127,8 @@ class Mqtt5
     public static function decode(string $buffer)
     {
 //        var_dump((new Debug($buffer))->hexDumpAscii());
-        $cmd = DecodeTrait::getCmd($buffer);
-        $body = DecodeTrait::getBody($buffer);
+        $cmd = Decoder::getCmd($buffer);
+        $body = Decoder::getBody($buffer);
         switch ($cmd) {
             // ['cmd'=>1, 'clean_session'=>x, 'will'=>['qos'=>x, 'retain'=>x, 'topic'=>x, 'content'=>x],'username'=>x, 'password'=>x, 'keepalive'=>x, 'protocol_name'=>x, 'protocol_level'=>x, 'client_id' => x]
             case MQTTConst::CMD_CONNECT:

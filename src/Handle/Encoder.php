@@ -2,7 +2,7 @@
 
 namespace Workerman\Mqtt\Handle;
 
-trait EncodeTrait
+class Encoder
 {
     /**
      * Pack string.

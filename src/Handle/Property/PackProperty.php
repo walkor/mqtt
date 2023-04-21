@@ -3,7 +3,7 @@
 namespace Workerman\Mqtt\Handle\Property;
 
 use Workerman\Mqtt\Consts\PropertyConst;
-use Workerman\Mqtt\Handle\EncodeTrait;
+use Workerman\Mqtt\Handle\Encoder;
 
 class PackProperty
 {
@@ -19,13 +19,13 @@ class PackProperty
                 switch ($property) {
                     case PropertyConst::SESSION_EXPIRY_INTERVAL:
                         $length += 5;
-                        $tmpBody .= EncodeTrait::longInt($item);
+                        $tmpBody .= Encoder::longInt($item);
                         break;
                     case PropertyConst::AUTHENTICATION_METHOD:
                     case PropertyConst::AUTHENTICATION_DATA:
                         $length += 3;
                         $length += strlen($item);
-                        $tmpBody .= EncodeTrait::packString($item);
+                        $tmpBody .= Encoder::packString($item);
                         break;
                     case PropertyConst::REQUEST_PROBLEM_INFORMATION:
                     case PropertyConst::REQUEST_RESPONSE_INFORMATION:
@@ -36,7 +36,7 @@ class PackProperty
                     case PropertyConst::TOPIC_ALIAS_MAXIMUM:
                     case PropertyConst::MAXIMUM_PACKET_SIZE:
                         $length += 3;
-                        $tmpBody .= EncodeTrait::shortInt($item);
+                        $tmpBody .= Encoder::shortInt($item);
                         break;
                 }
             } else {
@@ -45,7 +45,7 @@ class PackProperty
                 $length += strlen((string) $key);
                 $length += strlen((string) $item);
                 $tmpBody .= chr($connect['user_property']);
-                $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+                $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
             }
         }
 
@@ -65,14 +65,14 @@ class PackProperty
                     case PropertyConst::MESSAGE_EXPIRY_INTERVAL:
                     case PropertyConst::WILL_DELAY_INTERVAL:
                         $length += 5;
-                        $tmpBody .= EncodeTrait::longInt($item);
+                        $tmpBody .= Encoder::longInt($item);
                         break;
                     case PropertyConst::CONTENT_TYPE:
                     case PropertyConst::RESPONSE_TOPIC:
                     case PropertyConst::CORRELATION_DATA:
                         $length += 3;
                         $length += strlen($item);
-                        $tmpBody .= EncodeTrait::packString($item);
+                        $tmpBody .= Encoder::packString($item);
                         break;
                     case PropertyConst::PAYLOAD_FORMAT_INDICATOR:
                         $length += 2;
@@ -85,7 +85,7 @@ class PackProperty
                 $length += strlen((string) $key);
                 $length += strlen((string) $item);
                 $tmpBody .= chr($willProperties['user_property']);
-                $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+                $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
             }
         }
 
@@ -105,13 +105,13 @@ class PackProperty
                     case PropertyConst::SESSION_EXPIRY_INTERVAL:
                     case PropertyConst::MAXIMUM_PACKET_SIZE:
                         $length += 5;
-                        $tmpBody .= EncodeTrait::longInt($item);
+                        $tmpBody .= Encoder::longInt($item);
                         break;
                     case PropertyConst::SERVER_KEEP_ALIVE:
                     case PropertyConst::RECEIVE_MAXIMUM:
                     case PropertyConst::TOPIC_ALIAS_MAXIMUM:
                         $length += 3;
-                        $tmpBody .= EncodeTrait::shortInt($item);
+                        $tmpBody .= Encoder::shortInt($item);
                         break;
                     case PropertyConst::ASSIGNED_CLIENT_IDENTIFIER:
                     case PropertyConst::AUTHENTICATION_METHOD:
@@ -121,7 +121,7 @@ class PackProperty
                     case PropertyConst::REASON_STRING:
                         $length += 3;
                         $length += strlen($item);
-                        $tmpBody .= EncodeTrait::packString($item);
+                        $tmpBody .= Encoder::packString($item);
                         break;
                     case PropertyConst::MAXIMUM_QOS:
                     case PropertyConst::RETAIN_AVAILABLE:
@@ -138,7 +138,7 @@ class PackProperty
                 $length += strlen((string) $key);
                 $length += strlen((string) $item);
                 $tmpBody .= chr($connAck['user_property']);
-                $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+                $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
             }
         }
 
@@ -157,18 +157,18 @@ class PackProperty
                 switch ($property) {
                     case PropertyConst::MESSAGE_EXPIRY_INTERVAL:
                         $length += 5;
-                        $tmpBody .= EncodeTrait::longInt($item);
+                        $tmpBody .= Encoder::longInt($item);
                         break;
                     case PropertyConst::TOPIC_ALIAS:
                         $length += 3;
-                        $tmpBody .= EncodeTrait::shortInt($item);
+                        $tmpBody .= Encoder::shortInt($item);
                         break;
                     case PropertyConst::CONTENT_TYPE:
                     case PropertyConst::RESPONSE_TOPIC:
                     case PropertyConst::CORRELATION_DATA:
                         $length += 3;
                         $length += strlen($item);
-                        $tmpBody .= EncodeTrait::packString($item);
+                        $tmpBody .= Encoder::packString($item);
                         break;
                     case PropertyConst::PAYLOAD_FORMAT_INDICATOR:
                         $length += 2;
@@ -176,7 +176,7 @@ class PackProperty
                         break;
                     case PropertyConst::SUBSCRIPTION_IDENTIFIER:
                         $length += 1;
-                        $value = EncodeTrait::varInt((int) $item);
+                        $value = Encoder::varInt((int) $item);
                         $length += strlen($value);
                         $tmpBody .= $value;
                         break;
@@ -187,7 +187,7 @@ class PackProperty
                 $length += strlen((string) $key);
                 $length += strlen((string) $item);
                 $tmpBody .= chr($publish['user_property']);
-                $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+                $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
             }
         }
 
@@ -207,7 +207,7 @@ class PackProperty
                     case PropertyConst::REASON_STRING:
                         $length += 3;
                         $length += strlen($item);
-                        $tmpBody .= EncodeTrait::packString($item);
+                        $tmpBody .= Encoder::packString($item);
                         break;
                 }
             } else {
@@ -216,7 +216,7 @@ class PackProperty
                 $length += strlen((string) $key);
                 $length += strlen((string) $item);
                 $tmpBody .= chr($pubAndSub['user_property']);
-                $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+                $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
             }
         }
 
@@ -235,7 +235,7 @@ class PackProperty
                 switch ($property) {
                     case PropertyConst::SUBSCRIPTION_IDENTIFIER:
                         $length += 1;
-                        $value = EncodeTrait::varInt((int) $item);
+                        $value = Encoder::varInt((int) $item);
                         $length += strlen($value);
                         $tmpBody .= $value;
                         break;
@@ -246,7 +246,7 @@ class PackProperty
                 $length += strlen((string) $key);
                 $length += strlen((string) $item);
                 $tmpBody .= chr($subscribe['user_property']);
-                $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+                $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
             }
         }
 
@@ -264,7 +264,7 @@ class PackProperty
             $length += strlen((string) $key);
             $length += strlen((string) $item);
             $tmpBody .= chr($unSubscribe['user_property']);
-            $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+            $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
         }
 
         return chr($length) . $tmpBody;
@@ -282,13 +282,13 @@ class PackProperty
                 switch ($property) {
                     case PropertyConst::SESSION_EXPIRY_INTERVAL:
                         $length += 5;
-                        $tmpBody .= EncodeTrait::longInt($item);
+                        $tmpBody .= Encoder::longInt($item);
                         break;
                     case PropertyConst::SERVER_REFERENCE:
                     case PropertyConst::REASON_STRING:
                         $length += 3;
                         $length += strlen($item);
-                        $tmpBody .= EncodeTrait::packString($item);
+                        $tmpBody .= Encoder::packString($item);
                         break;
                 }
             } else {
@@ -297,7 +297,7 @@ class PackProperty
                 $length += strlen((string) $key);
                 $length += strlen((string) $item);
                 $tmpBody .= chr($disConnect['user_property']);
-                $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+                $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
             }
         }
 
@@ -319,7 +319,7 @@ class PackProperty
                     case PropertyConst::REASON_STRING:
                         $length += 3;
                         $length += strlen($item);
-                        $tmpBody .= EncodeTrait::packString($item);
+                        $tmpBody .= Encoder::packString($item);
                         break;
                 }
             } else {
@@ -328,7 +328,7 @@ class PackProperty
                 $length += strlen((string) $key);
                 $length += strlen((string) $item);
                 $tmpBody .= chr($auth['user_property']);
-                $tmpBody .= EncodeTrait::stringPair((string) $key, (string) $item);
+                $tmpBody .= Encoder::stringPair((string) $key, (string) $item);
             }
         }
 

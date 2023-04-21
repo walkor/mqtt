@@ -15,7 +15,7 @@ class DecodeV5
 {
     public static function connect(string $body): array
     {
-        $protocol_name = DecodeTrait::readString($body);
+        $protocol_name = Decoder::readString($body);
         $protocol_level = ord($body[0]);
         $clean_session = ord($body[1]) >> 1 & 0x1;
         $will_flag = ord($body[1]) >> 2 & 0x1;
@@ -24,27 +24,27 @@ class DecodeV5
         $password_flag = ord($body[1]) >> 6 & 0x1;
         $userName_flag = ord($body[1]) >> 7 & 0x1;
         $body = substr($body, 2);
-        $keepAlive = DecodeTrait::shortInt($body);
-        $properties_total_length = DecodeTrait::byte($body);
+        $keepAlive = Decoder::shortInt($body);
+        $properties_total_length = Decoder::byte($body);
         if ($properties_total_length) {
             $properties = UnPackProperty::connect($properties_total_length, $body);
         }
-        $clientId = DecodeTrait::readString($body);
+        $clientId = Decoder::readString($body);
         $will_properties = [];
         if ($will_flag) {
-            $will_properties_total_length = DecodeTrait::byte($body);
+            $will_properties_total_length = Decoder::byte($body);
             if ($will_properties_total_length) {
                 $will_properties = UnPackProperty::willProperties($will_properties_total_length, $body);
             }
-            $will_topic = DecodeTrait::readString($body);
-            $will_content = DecodeTrait::readString($body);
+            $will_topic = Decoder::readString($body);
+            $will_content = Decoder::readString($body);
         }
         $userName = $password = '';
         if ($userName_flag) {
-            $userName = DecodeTrait::readString($body);
+            $userName = Decoder::readString($body);
         }
         if ($password_flag) {
-            $password = DecodeTrait::readString($body);
+            $password = Decoder::readString($body);
         }
 
         $package = [
@@ -97,7 +97,7 @@ class DecodeV5
             'code' => $code,
         ];
 
-        $properties_total_length = DecodeTrait::byte($body);
+        $properties_total_length = Decoder::byte($body);
         if ($properties_total_length) {
             $package['properties'] = UnPackProperty::connAck($properties_total_length, $body);
         }
@@ -107,7 +107,7 @@ class DecodeV5
 
     public static function publish(int $dup, int $qos, int $retain, string $body): array
     {
-        $topic = DecodeTrait::readString($body);
+        $topic = Decoder::readString($body);
 
         $package = [
             'cmd' => MQTTConst::CMD_PUBLISH,
@@ -118,10 +118,10 @@ class DecodeV5
         ];
 
         if ($qos) {
-            $package['message_id'] = DecodeTrait::shortInt($body);
+            $package['message_id'] = Decoder::shortInt($body);
         }
 
-        $properties_total_length = DecodeTrait::byte($body);
+        $properties_total_length = Decoder::byte($body);
         if ($properties_total_length) {
             $package['properties'] = UnPackProperty::publish($properties_total_length, $body);
         }
@@ -133,20 +133,20 @@ class DecodeV5
 
     public static function subscribe(string $body): array
     {
-        $message_id = DecodeTrait::shortInt($body);
+        $message_id = Decoder::shortInt($body);
         $package = [
             'cmd' => MQTTConst::CMD_SUBSCRIBE,
             'message_id' => $message_id,
         ];
 
-        $properties_total_length = DecodeTrait::byte($body);
+        $properties_total_length = Decoder::byte($body);
         if ($properties_total_length) {
             $package['properties'] = UnPackProperty::subscribe($properties_total_length, $body);
         }
 
         $topics = [];
         while ($body) {
-            $topic = DecodeTrait::readString($body);
+            $topic = Decoder::readString($body);
             $topics[$topic] = [
                 'qos' => ord($body[0]) & 0x3,
                 'no_local' => (bool) (ord($body[0]) >> 2 & 0x1),
@@ -163,14 +163,14 @@ class DecodeV5
 
     public static function subAck(string $body): array
     {
-        $message_id = DecodeTrait::shortInt($body);
+        $message_id = Decoder::shortInt($body);
 
         $package = [
             'cmd' => MQTTConst::CMD_SUBACK,
             'message_id' => $message_id,
         ];
 
-        $properties_total_length = DecodeTrait::byte($body);
+        $properties_total_length = Decoder::byte($body);
         if ($properties_total_length) {
             $package['properties'] = UnPackProperty::pubAndSub($properties_total_length, $body);
         }
@@ -183,21 +183,21 @@ class DecodeV5
 
     public static function unSubscribe(string $body): array
     {
-        $message_id = DecodeTrait::shortInt($body);
+        $message_id = Decoder::shortInt($body);
 
         $package = [
             'cmd' => MQTTConst::CMD_UNSUBSCRIBE,
             'message_id' => $message_id,
         ];
 
-        $properties_total_length = DecodeTrait::byte($body);
+        $properties_total_length = Decoder::byte($body);
         if ($properties_total_length) {
             $package['properties'] = UnPackProperty::unSubscribe($properties_total_length, $body);
         }
 
         $topics = [];
         while ($body) {
-            $topic = DecodeTrait::readString($body);
+            $topic = Decoder::readString($body);
             $topics[] = $topic;
         }
 
@@ -208,14 +208,14 @@ class DecodeV5
 
     public static function unSubAck(string $body): array
     {
-        $message_id = DecodeTrait::shortInt($body);
+        $message_id = Decoder::shortInt($body);
 
         $package = [
             'cmd' => MQTTConst::CMD_UNSUBACK,
             'message_id' => $message_id,
         ];
 
-        $properties_total_length = DecodeTrait::byte($body);
+        $properties_total_length = Decoder::byte($body);
         if ($properties_total_length) {
             $package['properties'] = UnPackProperty::pubAndSub($properties_total_length, $body);
         }
@@ -229,7 +229,7 @@ class DecodeV5
     public static function disconnect(string $body): array
     {
         if (isset($body[0])) {
-            $code = DecodeTrait::byte($body);
+            $code = Decoder::byte($body);
         } else {
             $code = ReasonCodeConst::NORMAL_DISCONNECTION;
         }
@@ -240,7 +240,7 @@ class DecodeV5
 
         $properties_total_length = 0;
         if (isset($body[0])) {
-            $properties_total_length = DecodeTrait::byte($body);
+            $properties_total_length = Decoder::byte($body);
         }
 
         if ($properties_total_length) {
@@ -252,10 +252,10 @@ class DecodeV5
 
     public static function getReasonCode(int $cmd, string $body): array
     {
-        $message_id = DecodeTrait::shortInt($body);
+        $message_id = Decoder::shortInt($body);
 
         if (isset($body[0])) {
-            $code = DecodeTrait::byte($body);
+            $code = Decoder::byte($body);
         } else {
             $code = ReasonCodeConst::SUCCESS;
         }
@@ -268,7 +268,7 @@ class DecodeV5
 
         $properties_total_length = 0;
         if (isset($body[0])) {
-            $properties_total_length = DecodeTrait::byte($body);
+            $properties_total_length = Decoder::byte($body);
         }
 
         if ($properties_total_length) {
@@ -281,7 +281,7 @@ class DecodeV5
     public static function auth(string $data): array
     {
         if (isset($data[0])) {
-            $code = DecodeTrait::byte($data);
+            $code = Decoder::byte($data);
         } else {
             $code = ReasonCodeConst::SUCCESS;
         }
@@ -292,7 +292,7 @@ class DecodeV5
 
         $properties_total_length = 0;
         if (isset($data[0])) {
-            $properties_total_length = DecodeTrait::byte($data);
+            $properties_total_length = Decoder::byte($data);
         }
 
         if ($properties_total_length) {

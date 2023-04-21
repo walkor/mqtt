@@ -31,7 +31,7 @@ Run with command ```php subscribe.php start```
 **publish.php**
 ```php
 <?php
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 use Workerman\Worker;
 $worker = new Worker();
 $worker->onWorkerStart = function(){

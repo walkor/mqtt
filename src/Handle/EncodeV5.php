@@ -15,7 +15,7 @@ class EncodeV5
 {
     public static function connect(array $data): string
     {
-        $body = EncodeTrait::packString($data['protocol_name']) . chr($data['protocol_level']);
+        $body = Encoder::packString($data['protocol_name']) . chr($data['protocol_level']);
         $connect_flags = 0;
         if (!empty($data['clean_session'])) {
             $connect_flags |= 1 << 1;
@@ -37,26 +37,26 @@ class EncodeV5
         $body .= chr($connect_flags);
 
         $keepalive = !empty($data['keepalive']) && (int)$data['keepalive'] >= 0 ? (int)$data['keepalive'] : 0;
-        $body .= EncodeTrait::shortInt($keepalive);
+        $body .= Encoder::shortInt($keepalive);
 
         // CONNECT Properties for MQTT5
         $body .= PackProperty::connect($data['properties'] ?? []);
 
-        $body .= EncodeTrait::packString($data['client_id']);
+        $body .= Encoder::packString($data['client_id']);
         if (!empty($data['will'])) {
             // Will Properties for MQTT5
             $body .= PackProperty::willProperties($data['will']['properties'] ?? []);
 
-            $body .= EncodeTrait::packString($data['will']['topic']);
-            $body .= EncodeTrait::packString($data['will']['content']);
+            $body .= Encoder::packString($data['will']['topic']);
+            $body .= Encoder::packString($data['will']['content']);
         }
         if (!empty($data['username']) || $data['username'] === '0') {
-            $body .= EncodeTrait::packString($data['username']);
+            $body .= Encoder::packString($data['username']);
         }
         if (!empty($data['password']) || $data['password'] === '0') {
-            $body .= EncodeTrait::packString($data['password']);
+            $body .= Encoder::packString($data['password']);
         }
-        $head = EncodeTrait::packHead(MQTTConst::CMD_CONNECT, strlen($body));
+        $head = Encoder::packHead(MQTTConst::CMD_CONNECT, strlen($body));
 
         return $head . $body;
     }
@@ -70,16 +70,16 @@ class EncodeV5
         // CONNACK Properties  for MQTT5
         $body .= PackProperty::connAck($data['properties'] ?? []);
 
-        $head = EncodeTrait::packHead(MQTTConst::CMD_CONNACK, strlen($body));
+        $head = Encoder::packHead(MQTTConst::CMD_CONNACK, strlen($body));
         return $head . $body;
     }
 
     public static function publish(array $data): string
     {
-        $body = EncodeTrait::packString($data['topic']);
+        $body = Encoder::packString($data['topic']);
         $qos = $data['qos'] ?? 0;
         if ($qos) {
-            $body .= EncodeTrait::shortInt($data['message_id']);
+            $body .= Encoder::shortInt($data['message_id']);
         }
         $dup = $data['dup'] ?? 0;
         $retain = $data['retain'] ?? 0;
@@ -88,14 +88,14 @@ class EncodeV5
         $body .= PackProperty::publish($data['properties'] ?? []);
 
         $body .= $data['content'];
-        $head = EncodeTrait::packHead(MQTTConst::CMD_PUBLISH, strlen($body), $dup, $qos, $retain);
+        $head = Encoder::packHead(MQTTConst::CMD_PUBLISH, strlen($body), $dup, $qos, $retain);
 
         return $head . $body;
     }
 
     public static function genReasonPhrase(array $data): string
     {
-        $body = EncodeTrait::shortInt($data['message_id']);
+        $body = Encoder::shortInt($data['message_id']);
         $code = !empty($data['code']) ? $data['code'] : ReasonCodeConst::SUCCESS;
         $body .= chr($code);
 
@@ -103,9 +103,9 @@ class EncodeV5
         $body .= PackProperty::pubAndSub($data['properties'] ?? []);
 
         if ($data['cmd'] === MQTTConst::CMD_PUBREL) {
-            $head = EncodeTrait::packHead($data['cmd'], strlen($body), 0, 1);
+            $head = Encoder::packHead($data['cmd'], strlen($body), 0, 1);
         } else {
-            $head = EncodeTrait::packHead($data['cmd'], strlen($body));
+            $head = Encoder::packHead($data['cmd'], strlen($body));
         }
 
         return $head . $body;
@@ -113,13 +113,13 @@ class EncodeV5
 
     public static function subscribe(array $data): string
     {
-        $body = EncodeTrait::shortInt($data['message_id']);
+        $body = Encoder::shortInt($data['message_id']);
 
         // SUBSCRIBE Properties
         $body .= PackProperty::subscribe($data['properties'] ?? []);
 
         foreach ($data['topics'] as $topic => $options) {
-            $body .= EncodeTrait::packString($topic);
+            $body .= Encoder::packString($topic);
 
             $subscribeOptions = 0;
             if (isset($options['qos'])) {
@@ -137,14 +137,14 @@ class EncodeV5
             $body .= chr($subscribeOptions);
         }
 
-        $head = EncodeTrait::packHead(MQTTConst::CMD_SUBSCRIBE, strlen($body), 0, 1);
+        $head = Encoder::packHead(MQTTConst::CMD_SUBSCRIBE, strlen($body), 0, 1);
         return $head . $body;
     }
 
     public static function subAck(array $data): string
     {
         $codes = $data['codes'];
-        $body = EncodeTrait::shortInt($data['message_id']);
+        $body = Encoder::shortInt($data['message_id']);
 
         // SUBACK Properties
         $body .= PackProperty::pubAndSub($data['properties'] ?? []);
@@ -153,29 +153,29 @@ class EncodeV5
             'pack',
             array_merge(['C*'], $codes)
         );
-        $head = EncodeTrait::packHead(MQTTConst::CMD_SUBACK, strlen($body));
+        $head = Encoder::packHead(MQTTConst::CMD_SUBACK, strlen($body));
 
         return $head . $body;
     }
 
     public static function unSubscribe(array $data): string
     {
-        $body = EncodeTrait::shortInt($data['message_id']);
+        $body = Encoder::shortInt($data['message_id']);
 
         // UNSUBSCRIBE Properties
         $body .= PackProperty::unSubscribe($data['properties'] ?? []);
 
         foreach ($data['topics'] as $topic) {
-            $body .= EncodeTrait::packString($topic);
+            $body .= Encoder::packString($topic);
         }
-        $head = EncodeTrait::packHead(MQTTConst::CMD_UNSUBSCRIBE, strlen($body), 0, 1);
+        $head = Encoder::packHead(MQTTConst::CMD_UNSUBSCRIBE, strlen($body), 0, 1);
 
         return $head . $body;
     }
 
     public static function unSubAck(array $data): string
     {
-        $body = EncodeTrait::shortInt($data['message_id']);
+        $body = Encoder::shortInt($data['message_id']);
 
         // UNSUBACK Properties
         $body .= PackProperty::pubAndSub($data['properties'] ?? []);
@@ -184,7 +184,7 @@ class EncodeV5
             'pack',
             array_merge(['C*'], $data['codes'])
         );
-        $head = EncodeTrait::packHead(MQTTConst::CMD_UNSUBACK, strlen($body));
+        $head = Encoder::packHead(MQTTConst::CMD_UNSUBACK, strlen($body));
 
         return $head . $body;
     }
@@ -197,7 +197,7 @@ class EncodeV5
         // DISCONNECT Properties
         $body .= PackProperty::disConnect($data['properties'] ?? []);
 
-        $head = EncodeTrait::packHead(MQTTConst::CMD_DISCONNECT, strlen($body));
+        $head = Encoder::packHead(MQTTConst::CMD_DISCONNECT, strlen($body));
 
         return $head . $body;
     }
@@ -210,7 +210,7 @@ class EncodeV5
         // AUTH Properties
         $body .= PackProperty::auth($data['properties'] ?? []);
 
-        $head = EncodeTrait::packHead(MQTTConst::CMD_AUTH, strlen($body));
+        $head = Encoder::packHead(MQTTConst::CMD_AUTH, strlen($body));
 
         return $head . $body;
     }
