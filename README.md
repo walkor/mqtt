@@ -2,7 +2,9 @@
 Asynchronous MQTT client for PHP based on workerman.
 
 # Installation
+```bash
 composer require workerman/mqtt
+```
 
 # 文档
 [中文文档](https://www.workerman.net/doc/workerman/components/workerman-mqtt.html)
