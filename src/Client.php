@@ -262,7 +262,7 @@ class Client
      * @param $topic
      * @param array $options
      * @param callable $callback
-     * @param array $callback
+     * @param array $properties
      */
     public function subscribe($topic, array $options = array(), $callback = null, $properties=[])
     {
