@@ -104,7 +104,7 @@ Connect to broker specified by the given $address and $options in `__construct($
 -------------------------------------------------------
 
 <a name="publish"></a>
-### publish(String $topic, String $content, [array $options], [callable $callback])
+### publish(String $topic, String $content, [array $options], [callable $callback], [array $properties])
 
 Publish a message to a topic
 
@@ -115,12 +115,13 @@ Publish a message to a topic
   * `retain` retain flag, `Boolean`, default `false`
   * `dup` mark as duplicate flag, `Boolean`, default `false`
 * `$callback` - `function (\Exception $exception)`, fired when the QoS handling completes,
+* `$properties` - `array` MQTT5 user properties
   or at the next tick if QoS 0. No error occurs then `$exception` will be null.
   
 -------------------------------------------------------
 
 <a name="subscribe"></a>
-### subscribe(mixed $topic, [array $options], [callable $callback])
+### subscribe(mixed $topic, [array $options], [callable $callback], [array $properties])
 
 Subscribe to a topic or topics
 
@@ -134,16 +135,18 @@ the QoS like `array('test1'=> 0, 'test2'=> 1)` to subscribe.
   * `granted` is an array of `array('topic' => 'qos', 'topic' => 'qos')` where:
     * `topic` is a subscribed to topic
     * `qos` is the granted qos level on it
+* `$properties` - `array` MQTT5 user properties
 
 -------------------------------------------------------
 
 <a name="unsubscribe"></a>
-### unsubscribe(mixed $topic, [callable $callback])
+### unsubscribe(mixed $topic, [callable $callback], [array $properties])
 
 Unsubscribe from a topic or topics
 
 * `$topic` is a `String` topic or an array of topics to unsubscribe from
 * `$callback` - `function (\Exception $e)`, fired on unsuback. No error occurs then `$exception` will be null..
+* `$properties` - `array` MQTT5 user properties
 
 -------------------------------------------------------
 
@@ -168,13 +171,14 @@ Emitted on successful connection (`CONNACK` package received).
 -------------------------------------------------------
 
 <a name="onMessage"></a>
-### callback onMessage(String $topic, String $content, Client $mqtt)
-`function (topic, message, packet) {}`
+### callback onMessage(String $topic, String $content, Client $mqtt, array $properties)
+`function (topic, message, client, properties) {}`
 
 Emitted when the client receives a publish packet
 * `$topic` topic of the received packet
 * `$content` payload of the received packet
 * `$mqtt` Client instance.
+* `$properties` `array` MQTT5 user properties
 
 -------------------------------------------------------
 
