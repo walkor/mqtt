@@ -114,9 +114,9 @@ Publish a message to a topic
   * `qos` QoS level, `Number`, default `0`
   * `retain` retain flag, `Boolean`, default `false`
   * `dup` mark as duplicate flag, `Boolean`, default `false`
-* `$callback` - `function (\Exception $exception)`, fired when the QoS handling completes,
+* `$callback` - `function (\Exception $exception)`, fired when the QoS handling completes, or at the next tick if QoS 0. No error occurs then `$exception` will be null.
 * `$properties` - `array` MQTT5 user properties
-  or at the next tick if QoS 0. No error occurs then `$exception` will be null.
+  
   
 -------------------------------------------------------
 
