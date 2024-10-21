@@ -596,7 +596,7 @@ class Client
                 if ($this->_options['debug']) {
                     echo "<- Recv PUBLISH package, message_id:$message_id qos:$qos topic:$topic content:$content properties:".json_encode($properties), PHP_EOL;
                 }
-                call_user_func($this->onMessage, $topic, $content, $this);
+                call_user_func($this->onMessage, $topic, $content, $this, $properties);
                 // Connection may be closed in onMessage callback.
                 if ($this->_state !== static::STATE_ESTABLISHED) {
                     return;
