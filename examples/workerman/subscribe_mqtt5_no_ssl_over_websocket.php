@@ -5,7 +5,7 @@ use Workerman\Worker;
 $worker = new Worker();
 $worker->onWorkerStart = function(){
     $will = [
-        'topic' => 'workerman-mqtt/user/delete',
+        'topic' => 'mqtt_exchange',
         'qos' => 1,
         'retain' => 0,
         'content' => 'byebye',
