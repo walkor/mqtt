@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of workerman.
  *
@@ -11,54 +12,59 @@
  * @link      http://www.workerman.net/
  * @license   http://www.opensource.org/licenses/mit-license.php MIT License
  */
+
 namespace Workerman\Mqtt;
 
-use \Workerman\Connection\AsyncTcpConnection;
+use InvalidArgumentException;
+use Workerman\Connection\AsyncTcpConnection;
+use Workerman\Connection\ConnectionInterface;
 use Workerman\Mqtt\Consts\MQTTConst;
 use Workerman\Mqtt\Consts\ReasonCodeConst;
-use \Workerman\Protocols\Mqtt;
-use \Workerman\Timer;
+use Workerman\Mqtt\Protocols\Mqtt;
+use Workerman\Mqtt\Protocols\Mqtt5;
+use Workerman\Mqtt\Protocols\ProtocolInterface;
+use Workerman\Mqtt\Protocols\Ws;
+use Workerman\Timer;
 
 /**
  * Class Client
- * @package Workerman\Mqtt
  */
 class Client
 {
     /**
      * STATE_INITIAL.
      */
-    const STATE_INITIAL = 1;
+    public const STATE_INITIAL = 1;
 
     /**
      * STATE_CONNECTING
      */
-    const STATE_CONNECTING = 2;
+    public const STATE_CONNECTING = 2;
 
     /**
      * STATE_WAITCONACK
      */
-    const STATE_WAITCONACK = 3;
+    public const STATE_WAITCONACK = 3;
 
     /**
      * STATE_ESTABLISHED
      */
-    const STATE_ESTABLISHED = 4;
+    public const STATE_ESTABLISHED = 4;
 
     /**
      * STATE_DISCONNECT
      */
-    const STATE_DISCONNECT = 5;
+    public const STATE_DISCONNECT = 5;
 
     /**
      * DEFAULT_CLIENT_ID_PREFIX
      */
-    const DEFAULT_CLIENT_ID_PREFIX = 'workerman-mqtt-client';
+    public const DEFAULT_CLIENT_ID_PREFIX = 'workerman-mqtt-client';
 
     /**
      * MAX_TOPIC_LENGTH
      */
-    const MAX_TOPIC_LENGTH = 65535;
+    public const MAX_TOPIC_LENGTH = 65535;
 
     /**
      * @var callable
@@ -88,86 +94,69 @@ class Client
     /**
      * @var int
      */
-    protected $_state = 1;
+    protected int $_state = 1;
 
     /**
      * @var int
      */
-    protected $_messageId = 1;
+    protected int $_messageId = 1;
+
 
     /**
-     * @var string
+     * @var AsyncTcpConnection|null
      */
-    protected $_remoteAddress = '';
+    protected ?AsyncTcpConnection $_connection = null;
 
     /**
-     * @var AsyncTcpConnection
+     * @var bool
      */
-    protected $_connection = null;
-
-    /**
-     * @var boolean
-     */
-    protected $_firstConnect = true;
+    protected bool $_firstConnect = true;
 
     /**
      * ['topic'=>qos, ...]
      * @var array
      */
-    protected $_resubscribeTopics = array();
+    protected array $_resubscribeTopics = [];
 
     /**
      * @var array
      */
-    protected $_resubscribeProperties = array();
+    protected array $_resubscribeProperties = [];
 
     /**
      * @var int
      */
-    protected $_checkConnectionTimeoutTimer = 0;
+    protected int $_checkConnectionTimeoutTimer = 0;
 
     /**
      * @var int
      */
-    protected $_pingTimer = 0;
+    protected int $_pingTimer = 0;
 
     /**
      * @var bool
      */
-    protected $_recvPingResponse = true;
+    protected bool $_recvPingResponse = true;
 
     /**
      * @var bool
      */
-    protected $_doNotReconnect = false;
+    protected bool $_doNotReconnect = false;
 
     /**
      * @var array
      */
-    protected $_outgoing = array();
+    protected array $_outgoing = [];
+
+    /**
+     * @var class-string
+     */
+    protected string $_protocol = Mqtt::class;
 
     /**
      * @var array
      */
-    protected static $_errorCodeStringMap = array(
-        1   => 'Connection Refused, unacceptable protocol version',
-        2   => 'Connection Refused, identifier rejected',
-        3   => 'Connection Refused, Server unavailable',
-        4   => 'Connection Refused, bad user name or password',
-        5   => 'Connection Refused, not authorized',
-        100 => 'Connection closed',
-        101 => 'Connection timeout',
-        102 => 'Connection fail',
-        103 => 'Connection buffer full and close connection',
-        140 => 'No connection to broker',
-        240 => 'Invalid topic',
-        241 => 'Invalid qos',
-    );
-
-    /**
-     * @var array
-     */
-    protected $_options = array(
+    protected array $_options = [
         'clean_session'    => 1, // set to 0 to receive QoS 1 and 2 messages while offline
         'username'         => '', // the username required by your broker
         'password'         => '', // the password required by your broker
@@ -181,90 +170,117 @@ class Client
         'ssl'              => false, // ssl context, see http://php.net/manual/en/context.ssl.php
         'debug'            => false, // debug
         'properties'       => [],  // properties, MQTT5 need
-    );
+        'uri'              => '/mqtt', // mqtt over websocket default uri
+    ];
 
     /**
-     * Client constructor.
-     * @param $address
+     * @var array
+     */
+    protected static array $_errorCodeStringMap = [
+        1   => 'Connection Refused, unacceptable protocol version',
+        2   => 'Connection Refused, identifier rejected',
+        3   => 'Connection Refused, Server unavailable',
+        4   => 'Connection Refused, bad user name or password',
+        5   => 'Connection Refused, not authorized',
+        100 => 'Connection closed',
+        101 => 'Connection timeout',
+        102 => 'Connection fail',
+        103 => 'Connection buffer full and close connection',
+        140 => 'No connection to broker',
+        240 => 'Invalid topic',
+        241 => 'Invalid qos',
+    ];
+
+    /**
+     * @var array|string[]
+     */
+    protected static array $_protocolMap = [
+        'ws'        => Ws::class,
+        'wss'       => Ws::class,
+        'mqtt'      => Mqtt::class,
+        'mqtts'     => Mqtt::class,
+    ];
+
+    /**
+     * 注册协议
+     *
+     * @param string $schema
+     * @param string $protocolClassname
+     * @return void
+     */
+    public static function registerProtocol(string $schema, string $protocolClassname): void
+    {
+        if (!is_a($protocolClassname, ProtocolInterface::class, true)) {
+            throw new InvalidArgumentException("$protocolClassname must implement ProtocolInterface");
+        }
+        static::$_protocolMap[$schema] = $protocolClassname;
+    }
+
+    /**
+     * @return AsyncTcpConnection|null
+     */
+    public function getConnection(): ?AsyncTcpConnection
+    {
+        return $this->_connection;
+    }
+
+    /**
+     * @param string $address
      * @param array $options
      * @throws \Exception
      */
-    public function __construct($address, array $options = array())
+    public function __construct(string $address, array $options = [])
     {
+        $context = [];
         $this->setOptions($options);
-
-        $class_name = '\Workerman\Protocols\Mqtt';
-        if ((int)$this->_options['protocol_level'] === 5) {
-            if (!class_exists($class_name)) {
-                class_alias('\Workerman\Mqtt\Protocols\Mqtt5', $class_name);
-            }
-        } else{
-            if (!class_exists($class_name)) {
-                class_alias('\Workerman\Mqtt\Protocols\Mqtt', $class_name);
-            }
-        }
-
-
-        $context = array();
-        if ($this->_options['bindto']) {
-            $context['socket'] = array('bindto' => $this->_options['bindto']);
-        }
-        if ($this->_options['ssl'] && is_array($this->_options['ssl'])) {
-            $context['ssl'] = $this->_options['ssl'];
-        }
-
-        if (strpos($address, 'mqtts') === 0) {
-            if (empty($this->_options['ssl'])) {
-                $this->_options['ssl'] = true;
-            }
-            $address = str_replace('mqtts', 'mqtt', $address);
-        }
-
-//        if ((int)$this->_options['protocol_level'] === 5) {
-//            if (strpos($address, 'mqtt') === 0) {
-//                $address = str_replace('mqtt', 'mqtt5', $address);
-//            }
-//        }
-
-        $this->_remoteAddress = $address;
-        $this->_connection    = new AsyncTcpConnection($address, $context);
-        // support tcp address
-        $this->_connection->protocol = $class_name;
-        $this->onReconnect    = array($this, 'onMqttReconnect');
-        $this->onMessage      = function(){};
-        if ($this->_options['ssl']) {
-            $this->_connection->transport = 'ssl';
-        }
+        // 解析协议
+        $addressInfo = parse_url($address);
+        $schema = $addressInfo['scheme'] ?? '';
+        /** @var ProtocolInterface $protocol */
+        $this->_protocol = static::$_protocolMap[$schema] ?? Mqtt::class;
+        // 协议初始化
+        $this->_protocol = $this->_protocol::init($address, $this->_options, $context);
+        // init connection
+        $this->_connection = new AsyncTcpConnection($address, $context);
+        $this->_connection->transport = $this->_options['ssl'] ? 'ssl': $this->_connection->transport;
+        $this->onReconnect = [$this, 'onMqttReconnect'];
+        $this->onMessage = function () {};
+        // MQTT over websocket
+        $this->_connection->websocketType = Ws::BINARY_TYPE_ARRAYBUFFER;
+        $this->_connection->websocketClientProtocol = 'MQTT';
+        $this->_connection->websocketClientDataProtocolClass = $this->_options['protocol_level'] === 5 ? Mqtt5::class : Mqtt::class;
+        // 协议类标识
     }
 
     /**
      * connect
+     *
+     * @return void
      */
-    public function connect()
+    public function connect(): void
     {
-        $this->_doNotReconnect           = false;
-        $this->_connection->onConnect    = array($this, 'onConnectionConnect');
-        $this->_connection->onMessage    = array($this, 'onConnectionMessage');
-        $this->_connection->onError      = array($this, 'onConnectionError');
-        $this->_connection->onClose      = array($this, 'onConnectionClose');
-        $this->_connection->onBufferFull = array($this, 'onConnectionBufferFull');
-        $this->_state                    = static::STATE_CONNECTING;
+        $this->_doNotReconnect              = false;
+        $this->_connection->onConnect       = [$this, 'onConnectionConnect'];
+        $this->_connection->onClose         = [$this, 'onConnectionClose'];
+        $this->_connection->onError         = [$this, 'onConnectionError'];
+        $this->_connection->onMessage       = [$this, 'onConnectionMessage'];
+        $this->_connection->onBufferFull    = [$this, 'onConnectionBufferFull'];
+        $this->_state                       = static::STATE_CONNECTING;
         $this->_connection->connect();
         $this->setConnectionTimeout($this->_options['connect_timeout']);
-        if ($this->_options['debug']) {
-            echo "-> Try to connect to {$this->_remoteAddress}", PHP_EOL;
-        }
+        $this->debugDump("Try to connect to {$this->_connection->getRemoteAddress()}", '->');
     }
 
     /**
      * subscribe
      *
-     * @param $topic
+     * @param array<string, string>|string $topic
      * @param array $options
-     * @param callable $callback
+     * @param callable|null $callback
      * @param array $properties
+     * @return void
      */
-    public function subscribe($topic, array $options = array(), $callback = null, $properties=[])
+    public function subscribe(array|string $topic, array $options = [], ?callable $callback = null, array $properties = []): void
     {
         if ($this->checkDisconnecting($callback)) {
             return;
@@ -273,62 +289,51 @@ class Client
         if (is_array($topic)) {
             $topics = $topic;
         } else {
-            if ((int)$this->_options['protocol_level'] === 5) {
-                $qos = !is_callable($options) && isset($options['qos']) ? $options['qos'] : 0;
+            $qos = !is_callable($options) && isset($options['qos']) ? $options['qos'] : 0;
+            if ((int) $this->_options['protocol_level'] === 5) {
                 $no_local = !is_callable($options) && isset($options['no_local']) ? $options['no_local'] : null;
                 $retain_as_published = !is_callable($options) && isset($options['retain_as_published']) ? $options['retain_as_published'] : null;
                 $retain_handling = !is_callable($options) && isset($options['retain_handling']) ? $options['retain_handling'] : null;
-                $topics = array($topic => [
-                    'qos' => $qos,
-                    'no_local' => $no_local,
+                $topics = [$topic => [
+                    'qos'                 => $qos,
+                    'no_local'            => $no_local,
                     'retain_as_published' => $retain_as_published,
-                    'retain_handling' => $retain_handling,
-                ]);
+                    'retain_handling'     => $retain_handling,
+                ]];
             } else {
-                $qos = !is_callable($options) && isset($options['qos']) ? $options['qos'] : 0;
-                $topics = array($topic => $qos);
+                $topics = [$topic => $qos];
             }
         }
-
-
-        $args = func_get_args();
-
-        $callback = end($args);
-
-        if (!is_callable($callback)) {
-            $callback = null;
-        }
-
-        if ($invalid_topic = static::validateTopics($topics)) {
+        if (static::validateTopics($topics)) {
             $this->triggerError(240, $callback);
+
             return;
         }
-
         if ($this->_options['resubscribe']) {
             $this->_resubscribeTopics += $topics;
             $this->_resubscribeProperties += $properties;
-
         }
-
-        $package = array(
+        $package = [
             'cmd'        => MQTTConst::CMD_SUBSCRIBE,
             'topics'     => $topics,
             'message_id' => $this->incrMessageId(),
             'properties' => $properties,
+        ];
+        $this->debugDump(
+            'Send SUBSCRIBE package, topic:' . implode(',', array_keys($topics)) .
+            " message_id:{$package['message_id']}" . ' properties:' . json_encode($properties),
+            '->'
         );
-
-        if ($this->_options['debug']) {
-            echo "-> Send SUBSCRIBE package, topic:".implode(',', array_keys($topics))." message_id:{$package['message_id']}"." properties:".json_encode($properties), PHP_EOL;
-        }
         $this->sendPackage($package);
 
         if ($callback) {
-            $this->_outgoing[$package['message_id']] = function($exception, $codes = array())use($callback, $topics) {
+            $this->_outgoing[$package['message_id']] = function ($exception, $codes = []) use ($callback, $topics) {
                 if ($exception) {
-                    call_user_func($callback, $exception, array());
+                    call_user_func($callback, $exception, []);
+
                     return;
                 }
-                $granted =  array();
+                $granted = [];
                 $topics = array_keys($topics);
                 foreach ($topics as $key => $topic) {
                     $granted[$topic] = $codes[$key];
@@ -343,16 +348,19 @@ class Client
     /**
      * unsubscribe
      *
-     * @param $topic
+     * @param array|string $topic
+     * @param callable|null $callback
+     * @param array $properties
      */
-    public function unsubscribe($topic, $callback = null, array $properties = [])
+    public function unsubscribe(array|string $topic, ?callable $callback = null, array $properties = []): void
     {
         if ($this->checkDisconnecting($callback)) {
             return;
         }
-        $topics = is_array($topic) ? $topic : array($topic);
-        if ($invalid_topic = static::validateTopics($topics)) {
+        $topics = is_array($topic) ? $topic : [$topic];
+        if (static::validateTopics($topics)) {
             $this->triggerError(240);
+
             return;
         }
         foreach ($topics as $_topic) {
@@ -362,18 +370,20 @@ class Client
         }
         $this->_resubscribeProperties = [];
 
-        $package = array(
+        $package = [
             'cmd'        => MQTTConst::CMD_UNSUBSCRIBE,
             'topics'     => $topics,
             'message_id' => $this->incrMessageId(),
             'properties' => $properties,
-        );
+        ];
         if ($callback) {
             $this->_outgoing[$package['message_id']] = $callback;
         }
-        if ($this->_options['debug']) {
-            echo "-> Send UNSUBSCRIBE package, topic:".implode(',', $topics)." message_id:{$package['message_id']}"." properties:".json_encode($properties), PHP_EOL;
-        }
+        $this->debugDump(
+            'Send UNSUBSCRIBE package, topic:' . implode(',', $topics) .
+            " message_id:{$package['message_id']}" . ' properties:' . json_encode($properties),
+            '->'
+        );
         $this->sendPackage($package);
     }
 
@@ -386,26 +396,28 @@ class Client
      * @param callable $callback
      * @param array $properties
      */
-    public function publish($topic, $content, $options = array(), $callback = null, $properties=[])
+    public function publish($topic, $content, $options = [], $callback = null, $properties = []): void
     {
         if ($this->checkDisconnecting($callback)) {
+
             return;
         }
-        if ((int)$this->_options['protocol_level'] === 5) {
+        if ((int) $this->_options['protocol_level'] === 5) {
             if (empty($topic)) {
-                if (!isset($properties['topic_alias']) || empty($properties['topic_alias'])) {
+                if (empty($properties['topic_alias'])) {
                     throw new \RuntimeException('Topic cannot be empty or need to set topic_alias');
                 }
             }
         } else {
             static::isValidTopic($topic);
         }
-        $qos    = 0;
+        $qos = 0;
         $retain = 0;
-        $dup    = 0;
+        $dup = 0;
         if (isset($options['qos'])) {
             $qos = $options['qos'];
-            if($this->checkInvalidQos($qos, $callback)) {
+            if ($this->checkInvalidQos($qos, $callback)) {
+
                 return;
             }
         }
@@ -415,48 +427,53 @@ class Client
         if (!empty($options['dup'])) {
             $dup = 1;
         }
-
-        $package = array(
-            'cmd'     => MQTTConst::CMD_PUBLISH,
-            'topic'   => $topic,
-            'content' => $content,
-            'retain'  => $retain,
-            'qos'     => $qos,
-            'dup'     => $dup,
+        $package = [
+            'cmd'        => MQTTConst::CMD_PUBLISH,
+            'topic'      => $topic,
+            'content'    => $content,
+            'retain'     => $retain,
+            'qos'        => $qos,
+            'dup'        => $dup,
             'properties' => $properties,
-        );
-
+        ];
         if ($qos) {
             $package['message_id'] = $this->incrMessageId();
             if ($callback) {
                 $this->_outgoing[$package['message_id']] = $callback;
             }
         }
-
-        if ($this->_options['debug']) {
-            $message_id = isset($package['message_id']) ? $package['message_id'] : '';
-            echo "-> Send PUBLISH package, topic:$topic content:$content retain:$retain qos:$qos dup:$dup message_id:$message_id"." properties:".json_encode($properties), PHP_EOL;
-        }
-
+        $this->debugDump(
+            "Send PUBLISH package, topic:$topic content:$content retain:$retain qos:$qos dup:$dup message_id:" .
+            ($package['message_id'] ?? '') . ' properties:' . json_encode($properties),
+            '->'
+        );
         $this->sendPackage($package);
     }
 
     /**
      * disconnect
+     *
+     * @param int $code
+     * @param array $properties
+     * @return void
      */
-    public function disconnect(int $code = ReasonCodeConst::NORMAL_DISCONNECTION, array $properties = [])
+    public function disconnect(int $code = ReasonCodeConst::NORMAL_DISCONNECTION, array $properties = []): void
     {
-        $this->sendPackage(array('cmd' => MQTTConst::CMD_DISCONNECT,'code' => $code, 'properties' => $properties));
+        $this->sendPackage(['cmd' => MQTTConst::CMD_DISCONNECT, 'code' => $code, 'properties' => $properties]);
         if ($this->_options['debug']) {
-            echo "-> Send DISCONNECT package", PHP_EOL;
+            echo '-> Send DISCONNECT package', PHP_EOL;
         }
         $this->close();
     }
 
     /**
      * auth
+     *
+     * @param int $code
+     * @param array $properties
+     * @return void
      */
-    public function auth(int $code = ReasonCodeConst::SUCCESS, array $properties = [])
+    public function auth(int $code = ReasonCodeConst::SUCCESS, array $properties = []): void
     {
         $this->sendPackage(['cmd' => MQTTConst::CMD_AUTH, 'code' => $code, 'properties' => $properties]);
     }
@@ -464,12 +481,10 @@ class Client
     /**
      * close
      */
-    public function close()
+    public function close(): void
     {
         $this->_doNotReconnect = true;
-        if ($this->_options['debug']) {
-            echo "-> Connection->close() called", PHP_EOL;
-        }
+        $this->debugDump('Connection->close() called', '->');
         $this->_connection->destroy();
     }
 
@@ -478,31 +493,31 @@ class Client
      *
      * @param int $after
      */
-    public function reconnect($after = 0)
+    public function reconnect(int $after = 0): void
     {
-        $this->_doNotReconnect        = false;
-        $this->_connection->onConnect = array($this, 'onConnectionConnect');
-        $this->_connection->onMessage = array($this, 'onConnectionMessage');
-        $this->_connection->onError   = array($this, 'onConnectionError');
-        $this->_connection->onClose   = array($this, 'onConnectionClose');
+        $this->_doNotReconnect = false;
+        $this->_connection->onConnect = [$this, 'onConnectionConnect'];
+        $this->_connection->onMessage = [$this, 'onConnectionMessage'];
+        $this->_connection->onError = [$this, 'onConnectionError'];
+        $this->_connection->onClose = [$this, 'onConnectionClose'];
         $this->_connection->reConnect($after);
         $this->setConnectionTimeout($this->_options['connect_timeout'] + $after);
-        if ($this->_options['debug']) {
-            echo "-- Reconnect after $after seconds", PHP_EOL;
-        }
+        $this->debugDump("Reconnect after $after seconds", '--');
     }
 
     /**
      * onConnectionConnect
+     * @return void
      */
-    public function onConnectionConnect()
+    public function onConnectionConnect(): void
     {
         if ($this->_doNotReconnect) {
             $this->close();
+
             return;
         }
         //['cmd'=>1, 'clean_session'=>x, 'will'=>['qos'=>x, 'retain'=>x, 'topic'=>x, 'content'=>x],'username'=>x, 'password'=>x, 'keepalive'=>x, 'protocol_name'=>x, 'protocol_level'=>x, 'client_id' => x]
-        $package = array(
+        $package = [
             'cmd'            => MQTTConst::CMD_CONNECT,
             'clean_session'  => $this->_options['clean_session'],
             'username'       => $this->_options['username'],
@@ -511,65 +526,65 @@ class Client
             'protocol_name'  => $this->_options['protocol_name'],
             'protocol_level' => $this->_options['protocol_level'],
             'client_id'      => $this->_options['client_id'],
-            'properties'     => $this->_options['properties'] // MQTT5 中所需要的属性
-        );
+            'properties'     => $this->_options['properties'], // MQTT5 中所需要的属性
+        ];
         if (isset($this->_options['will'])) {
             $package['will'] = $this->_options['will'];
         }
         $this->_state = static::STATE_WAITCONACK;
-        $this->_connection->send($package);
-        if ($this->_options['debug']) {
-            echo "-- Tcp connection established", PHP_EOL;
-            echo "-> Send CONNECT package client_id:{$this->_options['client_id']} username:{$this->_options['username']} password:{$this->_options['password']} clean_session:{$this->_options['clean_session']} protocol_name:{$this->_options['protocol_name']} protocol_level:{$this->_options['protocol_level']}", PHP_EOL;
-        }
+        $this->sendPackage($package, false);
+        $this->debugDump('Tcp connection established', '--');
+        $this->debugDump(
+            "Send CONNECT package client_id:{$this->_options['client_id']} username:{$this->_options['username']} password:{$this->_options['password']} clean_session:{$this->_options['clean_session']} protocol_name:{$this->_options['protocol_name']} protocol_level:{$this->_options['protocol_level']}",
+            '->'
+        );
     }
 
     /**
      * onMqttReconnect
+     *
+     * @return void
      */
-    public function onMqttReconnect()
+    public function onMqttReconnect(): void
     {
         if ($this->_options['clean_session'] && $this->_options['resubscribe'] && $this->_resubscribeTopics) {
-            $package = array(
+            $package = [
                 'cmd'        => MQTTConst::CMD_SUBSCRIBE,
                 'topics'     => $this->_resubscribeTopics,
                 'message_id' => $this->incrMessageId(),
-                'properties' => $this->_resubscribeProperties ?? []
-            );
+                'properties' => $this->_resubscribeProperties ?? [],
+            ];
             $this->sendPackage($package);
-            if ($this->_options['debug']) {
-                echo "-> Send SUBSCRIBE(Resubscribe) package topics:" .
-                    implode(',', array_keys($this->_resubscribeTopics))." message_id:{$package['message_id']}", PHP_EOL;
-            }
+            $this->debugDump(
+                'Send SUBSCRIBE(Resubscribe) package topics:' .
+                implode(',', array_keys($this->_resubscribeTopics)) . " message_id:{$package['message_id']}",
+                '->'
+            );
         }
     }
 
     /**
      * onConnectionMessage
      *
-     * @param $connection
+     * @param ConnectionInterface $connection
      * @param $data
      */
-    public function onConnectionMessage($connection, $data)
+    public function onConnectionMessage(ConnectionInterface $connection, $data): void
     {
+        $data = $this->_protocol::unpack($data, $connection);
         $cmd = $data['cmd'];
         switch ($cmd) {
             case MQTTConst::CMD_CONNACK:
-                $code = (int)$data['code'];
+                $code = (int) $data['code'];
                 if ($code !== 0) {
                     $message = $this->getErrorCodeString($code);
-                    if ($this->_options['debug']) {
-                        echo "<- Recv CONNACK package but get error " . $message . PHP_EOL;
-                    }
+                    $this->debugDump("Recv CONNACK package but get error $message", '<-');
                     $this->triggerError($code);
                     $this->_connection->destroy();
+
                     return;
                 }
-
-                if ($this->_options['debug']) {
-                    echo "<- Recv CONNACK package, MQTT connect success", PHP_EOL;
-                }
-
+                $this->debugDump("Recv CONNACK package, MQTT connect success", '<-');
                 $this->_state = static::STATE_ESTABLISHED;
                 if ($this->_firstConnect) {
                     if ($this->onConnect) {
@@ -585,90 +600,81 @@ class Client
                     $this->setPingTimer($this->_options['keepalive']);
                 }
                 $this->cancelConnectionTimeout();
+
                 return;
-            //['cmd' => $cmd, 'topic' => $topic, 'content' => $content]
+                //['cmd' => $cmd, 'topic' => $topic, 'content' => $content]
             case MQTTConst::CMD_PUBLISH:
-                $topic      = $data['topic'];
-                $content    = $data['content'];
-                $qos        = $data['qos'];
+                $topic = $data['topic'];
+                $content = $data['content'];
+                $qos = $data['qos'];
                 $message_id = $data['message_id'] ?? '';
                 $properties = $data['properties'] ?? [];
-                if ($this->_options['debug']) {
-                    echo "<- Recv PUBLISH package, message_id:$message_id qos:$qos topic:$topic content:$content properties:".json_encode($properties), PHP_EOL;
-                }
+                $this->debugDump(
+                    "Recv PUBLISH package, message_id:$message_id qos:$qos topic:$topic content:$content properties:" . json_encode($properties),
+                    '<-'
+                );
                 call_user_func($this->onMessage, $topic, $content, $this, $properties);
                 // Connection may be closed in onMessage callback.
                 if ($this->_state !== static::STATE_ESTABLISHED) {
                     return;
                 }
                 $extra_package = [];
-                if ((int)$this->_options['protocol_level'] === 5) {
+                if ((int) $this->_options['protocol_level'] === 5) {
                     $extra_package = ['properties' => $properties];
                 }
                 switch ($qos) {
                     case 0:
                         break;
                     case 1:
-                        if ($this->_options['debug']) {
-                            echo "-> Send PUBACK package, message_id:$message_id", PHP_EOL;
-                        }
-                        $this->sendPackage(array(
+                        $this->debugDump("Send PUBACK package, message_id: $message_id", '->');
+                        $this->sendPackage([
                             'cmd'        => MQTTConst::CMD_PUBACK,
                             'message_id' => $message_id,
-                        ) + $extra_package);
+                        ] + $extra_package);
                         break;
                     case 2:
-                        if ($this->_options['debug']) {
-                            echo "-> Send PUBREC package, message_id:$message_id", PHP_EOL;
-                        }
-                        $this->sendPackage(array(
+                        $this->debugDump("Send PUBREC package, message_id: $message_id", '->');
+                        $this->sendPackage([
                             'cmd'        => MQTTConst::CMD_PUBREC,
                             'message_id' => $message_id,
-                        ) + $extra_package);
+                        ] + $extra_package);
                 }
+
                 return;
             case MQTTConst::CMD_PUBREC:
                 $message_id = $data['message_id'];
                 $properties = $data['properties'] ?? [];
-                if ($this->_options['debug']) {
-                    echo "<- Recv PUBREC package, message_id:$message_id", PHP_EOL;
-                    echo "-> Send PUBREL package, message_id:$message_id", PHP_EOL;
-                }
+                $this->debugDump("Recv PUBREC package, message_id:$message_id", '<-');
+                $this->debugDump("Send PUBREL package, message_id: $message_id", '->');
                 $extra_package = [];
-                if ((int)$this->_options['protocol_level'] === 5) {
+                if ((int) $this->_options['protocol_level'] === 5) {
                     $extra_package = ['properties' => $properties];
                 }
-                $this->sendPackage(array(
+                $this->sendPackage([
                     'cmd'        => MQTTConst::CMD_PUBREL,
-                    'message_id' => $data['message_id']
-                ) + $extra_package);
+                    'message_id' => $data['message_id'],
+                ] + $extra_package);
                 break;
             case MQTTConst::CMD_PUBREL:
                 $message_id = $data['message_id'];
                 $properties = $data['properties'] ?? [];
-                if ($this->_options['debug']) {
-                    echo "<- Recv PUBREL package, message_id:$message_id", PHP_EOL;
-                    echo "-> Send PUBCOMP package, message_id:$message_id", PHP_EOL;
-                }
+                $this->debugDump("Recv PUBREL package, message_id: $message_id", '<-');
+                $this->debugDump("Send PUBCOMP package, message_id: $message_id", '->');
                 $extra_package = [];
                 if ((int)$this->_options['protocol_level'] === 5) {
                     $extra_package = ['properties' => $properties];
                 }
-                $this->sendPackage(array(
+                $this->sendPackage([
                     'cmd'        => MQTTConst::CMD_PUBCOMP,
-                    'message_id' => $message_id
-                ) + $extra_package);
+                    'message_id' => $message_id,
+                ] + $extra_package);
                 break;
             case MQTTConst::CMD_PUBACK:
             case MQTTConst::CMD_PUBCOMP:
                 $message_id = $data['message_id'];
-                if ($this->_options['debug']) {
-                    echo "<- Recv ".($cmd === MQTTConst::CMD_PUBACK ? 'PUBACK' : 'PUBCOMP') . " package, message_id:$message_id", PHP_EOL;
-                }
+                $this->debugDump("Recv " . ($cmd === MQTTConst::CMD_PUBACK ? 'PUBACK' : 'PUBCOMP') . " package, message_id: $message_id", '<-');
                 if (!empty($this->_outgoing[$message_id])) {
-                    if ($this->_options['debug']) {
-                        echo "-- Trigger PUB callback for message_id:$message_id", PHP_EOL;
-                    }
+                    $this->debugDump("Trigger PUB callback for message_id: $message_id");
                     $callback = $this->_outgoing[$message_id];
                     unset($this->_outgoing[$message_id]);
                     call_user_func($callback, null);
@@ -677,15 +683,11 @@ class Client
             case MQTTConst::CMD_SUBACK:
             case MQTTConst::CMD_UNSUBACK:
                 $message_id = $data['message_id'];
-                if ($this->_options['debug']) {
-                    echo "<- Recv ".($cmd === MQTTConst::CMD_SUBACK ? 'SUBACK' : 'UNSUBACK') . " package, message_id:$message_id", PHP_EOL;
-                }
+                $this->debugDump('Recv ' . ($cmd === MQTTConst::CMD_SUBACK ? 'SUBACK' : 'UNSUBACK') . " package, message_id: $message_id", '<-');
                 $callback = $this->_outgoing[$message_id] ?? null;
                 unset($this->_outgoing[$message_id]);
                 if ($callback) {
-                    if ($this->_options['debug']) {
-                        echo "-- Trigger ".($cmd === MQTTConst::CMD_SUBACK ? 'SUB' : 'UNSUB') . " callback for message_id:$message_id", PHP_EOL;
-                    }
+                    $this->debugDump('Trigger ' . ($cmd === MQTTConst::CMD_SUBACK ? 'SUB' : 'UNSUB') . " callback for message_id: $message_id", '--');
                     if ($cmd === MQTTConst::CMD_SUBACK) {
                         call_user_func($callback, null, $data['codes']);
                     } else {
@@ -695,23 +697,22 @@ class Client
                 break;
             case MQTTConst::CMD_PINGRESP:
                 $this->_recvPingResponse = true;
-                if ($this->_options['debug']) {
-                    echo "<- Recv PINGRESP package", PHP_EOL;
-                }
+                $this->debugDump('Recv PINGRESP package', '<-');
                 break;
-            default :
-                echo "unknow cmd";
+            default:
+                $this->debugDump('Recv unknow package, cmd: ' . $cmd, '<-');
+                echo 'unknow cmd';
         }
     }
 
     /**
      * onConnectionClose
+     *
+     * @return void
      */
-    public function onConnectionClose()
+    public function onConnectionClose(): void
     {
-        if ($this->_options['debug']) {
-            echo "-- Connection closed", PHP_EOL;
-        }
+        $this->debugDump('Connection closed', '--');
         $this->cancelPingTimer();
         $this->cancelConnectionTimeout();
         $this->_recvPingResponse = true;
@@ -719,9 +720,7 @@ class Client
         if (!$this->_doNotReconnect && $this->_options['reconnect_period'] > 0) {
             $this->reConnect($this->_options['reconnect_period']);
         }
-
         $this->flushOutgoing();
-
         if ($this->onClose) {
             call_user_func($this->onClose, $this);
         }
@@ -730,31 +729,59 @@ class Client
     /**
      * onConnectionError
      *
-     * @param $connection
+     * @param ConnectionInterface $connection
      * @param $code
+     * @return void
      */
-    public function onConnectionError($connection, $code)
+    public function onConnectionError(ConnectionInterface $connection, $code): void
     {
         // Connection error
         if ($code === 1) {
             $this->triggerError(102);
-        // Send fail, connection closed
+            // Send fail, connection closed
         } else {
             $this->triggerError(100);
         }
-
     }
 
     /**
      * onConnectionBufferFull
+     *
+     * @return void
      */
-    public function onConnectionBufferFull()
+    public function onConnectionBufferFull(): void
     {
-        if ($this->_options['debug']) {
-            echo "-- Connection buffer full and close connection", PHP_EOL;
-        }
+        $this->debugDump('Connection buffer full and close connection', '--');
         $this->triggerError(103);
         $this->_connection->destroy();
+    }
+
+    /**
+     * debug echo
+     *
+     * @param string $message
+     * @param string $tag
+     * @return void
+     */
+    protected function debugDump(string $message, string $tag = '--'): void
+    {
+        if ($this->_options['debug'] ?? false) {
+            echo "$tag $message\n";
+        }
+    }
+
+    /**
+     * sendPackage
+     *
+     * @param mixed $package
+     * @param bool $checkDisconnecting
+     */
+    protected function sendPackage(mixed $package, bool $checkDisconnecting = true): void
+    {
+        if ($checkDisconnecting and $this->checkDisconnecting()) {
+            return;
+        }
+        $this->_connection->send($this->_protocol::pack($package, $this->_connection));
     }
 
     /**
@@ -762,12 +789,13 @@ class Client
      *
      * @return int
      */
-    protected function incrMessageId()
+    protected function incrMessageId(): int
     {
         $message_id = $this->_messageId++;
         if ($message_id >= 65535) {
             $this->_messageId = 1;
         }
+
         return $message_id;
     }
 
@@ -775,14 +803,17 @@ class Client
      * checkInvalidQos
      *
      * @param $qos
-     * @return boolean
+     * @param callable|null $callback
+     * @return bool
      */
-    protected function checkInvalidQos($qos, $callback = null)
+    protected function checkInvalidQos($qos, ?callable $callback = null): bool
     {
         if ($qos !== 0 && $qos !== 1 && $qos !== 2) {
             $this->triggerError(241, $callback);
+
             return true;
         }
+
         return false;
     }
 
@@ -790,9 +821,9 @@ class Client
      * isValidTopic
      *
      * @param $topic
-     * @return boolean
+     * @return bool
      */
-    protected static function isValidTopic($topic)
+    protected static function isValidTopic($topic): bool
     {
         if (!static::isString($topic)) {
             return false;
@@ -801,6 +832,7 @@ class Client
         if ($topic_length > static::MAX_TOPIC_LENGTH) {
             return false;
         }
+
         return true;
     }
 
@@ -808,18 +840,19 @@ class Client
      * validateTopics
      *
      * @param $topics
-     * @return null|string
+     * @return string|null
      */
-    protected static function validateTopics($topics)
+    protected static function validateTopics($topics): string|null
     {
         if (empty($topics)) {
             return 'array()';
         }
         foreach ($topics as $topic => $qos) {
-            if(!static::isValidTopic($topic)) {
+            if (!static::isValidTopic($topic)) {
                 return $topic;
             }
         }
+
         return null;
     }
 
@@ -828,30 +861,34 @@ class Client
      * @param $string
      * @return bool
      */
-    protected static function isString($string) {
+    protected static function isString($string): bool
+    {
         return (is_string($string) || is_integer($string)) && strlen($string) > 0;
     }
 
     /**
      * triggerError
      *
-     * @param $exception
-     * @param $callback
+     * @param $code
+     * @param callable|null $callback
      */
-    protected function triggerError($code, $callback = null)
+    protected function triggerError($code, ?callable $callback = null): void
     {
         $exception = new \Exception($this->getErrorCodeString($code), $code);
-        if ($this->_options['debug']) {
-            echo "-- Error: ".$exception->getMessage() . PHP_EOL;
-        }
+        $this->debugDump('Error: ' . $exception->getMessage(), '--');
+
         if (!$callback) {
-            $callback = $this->onError ? $this->onError : function($exception){
-                echo "Mqtt client: ", $exception->getMessage(), PHP_EOL;
+            $callback = $this->onError ?: function ($exception) {
+                echo 'Mqtt client: ', $exception->getMessage(), PHP_EOL;
             };
         }
         call_user_func($callback, $exception);
     }
 
+    /**
+     * @param int $code
+     * @return mixed|string
+     */
     protected function getErrorCodeString(int $code)
     {
         return  static::$_errorCodeStringMap[$code] ?? ReasonCodeConst::getReason($code);
@@ -862,25 +899,31 @@ class Client
      *
      * @return string
      */
-    protected function createRandomClientId()
+    protected function createRandomClientId(): string
     {
         mt_srand();
+
         return static::DEFAULT_CLIENT_ID_PREFIX . '-' . mt_rand();
     }
 
     /**
      * addCheckTimeoutTimer
+     *
+     * @param $timeout
+     * @return void
      */
-    protected function setConnectionTimeout($timeout)
+    protected function setConnectionTimeout($timeout): void
     {
         $this->cancelConnectionTimeout();
-        $this->_checkConnectionTimeoutTimer = Timer::add($timeout, array($this, 'checkConnectTimeout'), null, false);
+        $this->_checkConnectionTimeoutTimer = Timer::add($timeout, [$this, 'checkConnectTimeout'], null, false);
     }
 
     /**
      * cancelConnectionTimeout
+     *
+     * @return void
      */
-    protected function cancelConnectionTimeout()
+    protected function cancelConnectionTimeout(): void
     {
         if ($this->_checkConnectionTimeoutTimer) {
             Timer::del($this->_checkConnectionTimeoutTimer);
@@ -890,32 +933,33 @@ class Client
 
     /**
      * setPingTimer
+     *
+     * @param float|int $pingInterval
+     * @return void
      */
-    protected function setPingTimer($ping_interval)
+    protected function setPingTimer(float|int $pingInterval): void
     {
         $this->cancelPingTimer();
-        $connection = $this->_connection;
-        $this->_pingTimer = Timer::add($ping_interval, function()use($connection){
+        $this->_pingTimer = Timer::add($pingInterval, function () {
             if (!$this->_recvPingResponse) {
-                if ($this->_options['debug']) {
-                    echo "<- Recv PINGRESP timeout", PHP_EOL;
-                    echo "-> Close connection", PHP_EOL;
-                }
+                $this->debugDump('Recv PINGRESP timeout', '<-');
+                $this->debugDump('Close connection', '->');
                 $this->_connection->destroy();
+
                 return;
             }
-            if ($this->_options['debug']) {
-                echo "-> Send PINGREQ package", PHP_EOL;
-            }
+            $this->debugDump('Send PINGREQ package', '->');
             $this->_recvPingResponse = false;
-            $connection->send(array('cmd' => MQTTConst::CMD_PINGREQ));
+            $this->sendPackage(['cmd' => MQTTConst::CMD_PINGREQ], false);
         });
     }
 
     /**
      * cancelPingTimer
+     *
+     * @return void
      */
-    protected function cancelPingTimer()
+    protected function cancelPingTimer(): void
     {
         if ($this->_pingTimer) {
             Timer::del($this->_pingTimer);
@@ -925,8 +969,10 @@ class Client
 
     /**
      * checkConnectTimeout
+     *
+     * @return void
      */
-    public function checkConnectTimeout()
+    public function checkConnectTimeout(): void
     {
         if ($this->_state === static::STATE_CONNECTING || $this->_state === static::STATE_WAITCONACK) {
             $this->triggerError(101);
@@ -937,49 +983,39 @@ class Client
     /**
      * checkDisconnecting
      *
-     * @param null $callback
+     * @param callable|null $callback
      * @return bool
      */
-    protected function checkDisconnecting($callback = null)
+    protected function checkDisconnecting(?callable $callback = null): bool
     {
         if ($this->_state !== static::STATE_ESTABLISHED) {
             $this->triggerError(140, $callback);
+
             return true;
         }
+
         return false;
     }
 
     /**
      * flushOutgoing
+     *
+     * @return void
      */
-    protected function flushOutgoing()
+    protected function flushOutgoing(): void
     {
         foreach ($this->_outgoing as $message_id => $callback) {
             $this->triggerError(100, $callback);
         }
-        $this->_outgoing = array();
-    }
-
-    /**
-     * sendPackage
-     *
-     * @param $package
-     */
-    protected function sendPackage($package)
-    {
-        if ($this->checkDisconnecting()) {
-            return;
-        }
-        $this->_connection->send($package);
+        $this->_outgoing = [];
     }
 
     /**
      * set options.
      *
-     * @param $options
-     * @throws \Exception
+     * @param array $options
      */
-    protected function setOptions($options)
+    protected function setOptions(array $options): void
     {
         if (isset($options['clean_session']) && !$options['clean_session']) {
             $this->_options['clean_session'] = 0;
@@ -987,25 +1023,25 @@ class Client
 
         if (isset($options['username'])) {
             if (!static::isString($options['username'])) {
-                throw new \Exception('Bad username, expected string or integer but ' . gettype($options['username']) . ' provided.');
+                throw new InvalidArgumentException('Bad username, expected string or integer but ' . gettype($options['username']) . ' provided.');
             }
             $this->_options['username'] = $options['username'];
         }
 
         if (isset($options['password'])) {
             if (!static::isString($options['password'])) {
-                throw new \Exception('Bad password, expected string or integer but ' . gettype($options['password']) . ' provided.');
+                throw new InvalidArgumentException('Bad password, expected string or integer but ' . gettype($options['password']) . ' provided.');
             }
             $this->_options['password'] = $options['password'];
         }
 
         if (isset($options['keepalive'])) {
-            $keepalive = (int)$options['keepalive'];
+            $keepalive = (int) $options['keepalive'];
             if (!static::isString($keepalive)) {
-                throw new \Exception('Bad keepalive, expected integer but ' . gettype($keepalive) . ' provided.');
+                throw new InvalidArgumentException('Bad keepalive, expected integer but ' . gettype($keepalive) . ' provided.');
             }
             if ($keepalive < 0) {
-                throw new \Exception('Bad keepalive, expected integer which not less than 0 but ' . $keepalive . ' provided.');
+                throw new InvalidArgumentException('Bad keepalive, expected integer which not less than 0 but ' . $keepalive . ' provided.');
             }
             $this->_options['keepalive'] = $keepalive;
         }
@@ -1013,25 +1049,25 @@ class Client
         if (isset($options['protocol_name'])) {
             $protocol_name = $options['protocol_name'];
             if ($protocol_name !== 'MQTT' && $protocol_name !== 'MQIsdp') {
-                throw new \Exception('Bad protocol_name of options, expected MQTT or MQIsdp but ' . $protocol_name . ' provided.');
+                throw new InvalidArgumentException('Bad protocol_name of options, expected MQTT or MQIsdp but ' . $protocol_name . ' provided.');
             }
             $this->_options['protocol_name'] = $protocol_name;
         }
 
         if (isset($options['protocol_level'])) {
-            $protocol_level = (int)$options['protocol_level'];
-            if ($this->_options['protocol_name'] === 'MQTT' && !in_array($protocol_level, [4, 5]) ) {
-                throw new \Exception('Bad protocol_level of options, expected (4 or 5) for protocol_name MQTT but ' . $options['protocol_level'] . ' provided.');
+            $protocol_level = (int) $options['protocol_level'];
+            if ($this->_options['protocol_name'] === 'MQTT' && !in_array($protocol_level, [4, 5])) {
+                throw new InvalidArgumentException('Bad protocol_level of options, expected (4 or 5) for protocol_name MQTT but ' . $options['protocol_level'] . ' provided.');
             }
             if ($this->_options['protocol_name'] === 'MQIsdp' && $protocol_level !== 3) {
-                throw new \Exception('Bad protocol_level of options, expected 3 for protocol_name MQTT but ' . $options['protocol_level'] . ' provided.');
+                throw new InvalidArgumentException('Bad protocol_level of options, expected 3 for protocol_name MQTT but ' . $options['protocol_level'] . ' provided.');
             }
             $this->_options['protocol_level'] = $protocol_level;
         }
 
         if (isset($options['client_id'])) {
             if (!static::isString($options['client_id'])) {
-                throw new \Exception('Bad client_id of options, expected string or integer but ' . gettype($options['client_id']) . ' provided.');
+                throw new InvalidArgumentException('Bad client_id of options, expected string or integer but ' . gettype($options['client_id']) . ' provided.');
             }
             $this->_options['client_id'] = $options['client_id'];
         } else {
@@ -1041,43 +1077,43 @@ class Client
         // 遗嘱消息，当客户端断线后Broker会自动发送遗嘱消息给其它客户端
         if (isset($options['will'])) {
             $will = $options['will'];
-            $required = array('qos', 'topic', 'content');
+            $required = ['qos', 'topic', 'content'];
             foreach ($required as $key) {
                 if (!isset($will[$key])) {
-                    throw new \Exception('Bad will options, $will['.$key.'] missing.');
+                    throw new InvalidArgumentException('Bad will options, $will[' . $key . '] missing.');
                 }
             }
             if (!static::isString($will['topic'])) {
-                throw new \Exception('Bad $will[\'topic\'] of options, expected string or integer but ' . gettype($will['topic']) . ' provided.');
+                throw new InvalidArgumentException('Bad $will[\'topic\'] of options, expected string or integer but ' . gettype($will['topic']) . ' provided.');
             }
             if (!static::isString($will['content'])) {
-                throw new \Exception('Bad $will[\'content\'] of options, expected string or integer but ' . gettype($will['content']) . ' provided.');
+                throw new InvalidArgumentException('Bad $will[\'content\'] of options, expected string or integer but ' . gettype($will['content']) . ' provided.');
             }
             if ($this->checkInvalidQos($will['qos'])) {
-                throw new \Exception('Bad will qos:' . var_export($will['qos'], true));
+                throw new InvalidArgumentException('Bad will qos:' . var_export($will['qos'], true));
             }
             $this->_options['will'] = $options['will'];
         }
 
         // 重连时间间隔，默认 1 秒，0代表不重连
         if (isset($options['reconnect_period'])) {
-            $reconnect_period = (int)$options['reconnect_period'];
+            $reconnect_period = (int) $options['reconnect_period'];
             if (!static::isString($reconnect_period)) {
-                throw new \Exception('Bad reconnect_period of options, expected integer but ' . gettype($options['reconnect_period']) . ' provided.');
+                throw new InvalidArgumentException('Bad reconnect_period of options, expected integer but ' . gettype($options['reconnect_period']) . ' provided.');
             }
             if ($reconnect_period < 0) {
-                throw new \Exception('Bad reconnect_period, expected integer which not less than 0 but ' . $options['reconnect_period'] . ' provided.');
+                throw new InvalidArgumentException('Bad reconnect_period, expected integer which not less than 0 but ' . $options['reconnect_period'] . ' provided.');
             }
             $this->_options['reconnect_period'] = $reconnect_period;
         }
 
         if (isset($options['connect_timeout'])) {
-            $connect_timeout = (int)$options['connect_timeout'];
+            $connect_timeout = (int) $options['connect_timeout'];
             if (!static::isString($connect_timeout)) {
-                throw new \Exception('Bad connect_timeout of options, expected integer but ' . gettype($options['connect_timeout']) . ' provided.');
+                throw new InvalidArgumentException('Bad connect_timeout of options, expected integer but ' . gettype($options['connect_timeout']) . ' provided.');
             }
             if ($connect_timeout <= 0) {
-                throw new \Exception('Bad connect_timeout, expected integer which greater than 0 but ' . $options['connect_timeout'] . ' provided.');
+                throw new InvalidArgumentException('Bad connect_timeout, expected integer which greater than 0 but ' . $options['connect_timeout'] . ' provided.');
             }
             $this->_options['connect_timeout'] = $connect_timeout;
         }

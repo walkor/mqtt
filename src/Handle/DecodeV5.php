@@ -8,8 +8,6 @@ use Workerman\Mqtt\Handle\Property\UnPackProperty;
 
 /**
  * DecodeV5
- *
- * @package Workerman\Mqtt\Handle
  */
 class DecodeV5
 {
@@ -48,16 +46,16 @@ class DecodeV5
         }
 
         $package = [
-            'cmd' => MQTTConst::CMD_CONNECT,
-            'protocol_name' => $protocol_name,
+            'cmd'            => MQTTConst::CMD_CONNECT,
+            'protocol_name'  => $protocol_name,
             'protocol_level' => $protocol_level,
-            'clean_session' => $clean_session,
-            'properties' => [],
-            'will' => [],
-            'username' => $userName,
-            'password' => $password,
-            'keepalive' => $keepAlive,
-            'client_id' => $clientId,
+            'clean_session'  => $clean_session,
+            'properties'     => [],
+            'will'           => [],
+            'username'       => $userName,
+            'password'       => $password,
+            'keepalive'      => $keepAlive,
+            'client_id'      => $clientId,
         ];
 
         if ($properties_total_length) {
@@ -66,16 +64,16 @@ class DecodeV5
             unset($package['properties']);
         }
 
-//        $package['client_id'] = $clientId;
+        //        $package['client_id'] = $clientId;
 
         if ($will_flag) {
             if ($will_properties_total_length) {
                 $package['will']['properties'] = $will_properties;
             }
             $package['will'] += [
-                'qos' => $will_qos,
-                'retain' => $will_retain,
-                'topic' => $will_topic,
+                'qos'     => $will_qos,
+                'retain'  => $will_retain,
+                'topic'   => $will_topic,
                 'message' => $will_content,
             ];
         } else {
@@ -92,9 +90,9 @@ class DecodeV5
         $body = substr($body, 2);
 
         $package = [
-            'cmd' => MQTTConst::CMD_CONNACK,
+            'cmd'             => MQTTConst::CMD_CONNACK,
             'session_present' => $session_present,
-            'code' => $code,
+            'code'            => $code,
         ];
 
         $properties_total_length = Decoder::byte($body);
@@ -110,11 +108,11 @@ class DecodeV5
         $topic = Decoder::readString($body);
 
         $package = [
-            'cmd' => MQTTConst::CMD_PUBLISH,
-            'dup' => $dup,
-            'qos' => $qos,
+            'cmd'    => MQTTConst::CMD_PUBLISH,
+            'dup'    => $dup,
+            'qos'    => $qos,
             'retain' => $retain,
-            'topic' => $topic,
+            'topic'  => $topic,
         ];
 
         if ($qos) {
@@ -135,7 +133,7 @@ class DecodeV5
     {
         $message_id = Decoder::shortInt($body);
         $package = [
-            'cmd' => MQTTConst::CMD_SUBSCRIBE,
+            'cmd'        => MQTTConst::CMD_SUBSCRIBE,
             'message_id' => $message_id,
         ];
 
@@ -148,10 +146,10 @@ class DecodeV5
         while ($body) {
             $topic = Decoder::readString($body);
             $topics[$topic] = [
-                'qos' => ord($body[0]) & 0x3,
-                'no_local' => (bool) (ord($body[0]) >> 2 & 0x1),
+                'qos'                 => ord($body[0]) & 0x3,
+                'no_local'            => (bool) (ord($body[0]) >> 2 & 0x1),
                 'retain_as_published' => (bool) (ord($body[0]) >> 3 & 0x1),
-                'retain_handling' => ord($body[0]) >> 4,
+                'retain_handling'     => ord($body[0]) >> 4,
             ];
             $body = substr($body, 1);
         }
@@ -166,7 +164,7 @@ class DecodeV5
         $message_id = Decoder::shortInt($body);
 
         $package = [
-            'cmd' => MQTTConst::CMD_SUBACK,
+            'cmd'        => MQTTConst::CMD_SUBACK,
             'message_id' => $message_id,
         ];
 
@@ -186,7 +184,7 @@ class DecodeV5
         $message_id = Decoder::shortInt($body);
 
         $package = [
-            'cmd' => MQTTConst::CMD_UNSUBSCRIBE,
+            'cmd'        => MQTTConst::CMD_UNSUBSCRIBE,
             'message_id' => $message_id,
         ];
 
@@ -211,7 +209,7 @@ class DecodeV5
         $message_id = Decoder::shortInt($body);
 
         $package = [
-            'cmd' => MQTTConst::CMD_UNSUBACK,
+            'cmd'        => MQTTConst::CMD_UNSUBACK,
             'message_id' => $message_id,
         ];
 
@@ -234,7 +232,7 @@ class DecodeV5
             $code = ReasonCodeConst::NORMAL_DISCONNECTION;
         }
         $package = [
-            'cmd' => MQTTConst::CMD_DISCONNECT,
+            'cmd'  => MQTTConst::CMD_DISCONNECT,
             'code' => $code,
         ];
 
@@ -261,9 +259,9 @@ class DecodeV5
         }
 
         $package = [
-            'cmd' => $cmd,
+            'cmd'        => $cmd,
             'message_id' => $message_id,
-            'code' => $code,
+            'code'       => $code,
         ];
 
         $properties_total_length = 0;
@@ -286,7 +284,7 @@ class DecodeV5
             $code = ReasonCodeConst::SUCCESS;
         }
         $package = [
-            'cmd' => MQTTConst::CMD_AUTH,
+            'cmd'  => MQTTConst::CMD_AUTH,
             'code' => $code,
         ];
 

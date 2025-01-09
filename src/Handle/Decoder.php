@@ -26,11 +26,12 @@ class Decoder
     {
         $length = unpack('n', $buffer)[1];
         if ($length + 2 > strlen($buffer)) {
-            echo "buffer:" . bin2hex($buffer) . " length:$length not enough for unpackString\n";
+            echo 'buffer:' . bin2hex($buffer) . " length:$length not enough for unpackString\n";
         }
 
         $string = substr($buffer, 2, $length);
         $buffer = substr($buffer, $length + 2);
+
         return $string;
     }
 
@@ -63,7 +64,7 @@ class Decoder
         return $tmp;
     }
 
-    public static function varInt(string&$remaining,  &$len)
+    public static function varInt(string&$remaining, &$len)
     {
         $body_length = static::getBodyLength($remaining, $head_bytes);
         $len = $head_bytes;
@@ -86,15 +87,15 @@ class Decoder
      * @param null|int $head_bytes
      * @return int
      */
-    public static function getBodyLength(string $buffer,  &$head_bytes)
+    public static function getBodyLength(string $buffer, &$head_bytes)
     {
         $head_bytes = $multiplier = 1;
         $value = 0;
         do {
             if (!isset($buffer[$head_bytes])) {
                 throw new \Exception('Malformed Remaining Length');
-//                $head_bytes = 0;
-//                return 0;
+                //                $head_bytes = 0;
+                //                return 0;
             }
             $digit = ord($buffer[$head_bytes]);
             $value += ($digit & 127) * $multiplier;
@@ -114,6 +115,7 @@ class Decoder
     public static function getBody(string $buffer)
     {
         $body_length = static::getBodyLength($buffer, $head_bytes);
+
         return substr($buffer, $head_bytes, $body_length);
     }
 

@@ -13,6 +13,7 @@ class Encoder
     public static function packString(string $str): string
     {
         $len = strlen($str);
+
         return pack('n', $len) . $str;
     }
 
@@ -46,10 +47,13 @@ class Encoder
      * @param int $retain
      * @return string
      */
-    public static function packHead(int $cmd,
-                                    int $body_length,
-                                    int $dup = 0, int $qos = 0, int $retain = 0): string
-    {
+    public static function packHead(
+        int $cmd,
+        int $body_length,
+        int $dup = 0,
+        int $qos = 0,
+        int $retain = 0
+    ): string {
         $cmd = $cmd << 4;
         if ($dup) {
             $cmd |= 1 << 3;
@@ -60,6 +64,7 @@ class Encoder
         if ($retain) {
             $cmd |= 1;
         }
+
         return chr($cmd) . static::writeBodyLength($body_length);
     }
 

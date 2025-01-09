@@ -8,8 +8,6 @@ use Workerman\Mqtt\Handle\Property\PackProperty;
 
 /**
  * EncodeV5
- *
- * @package Workerman\Mqtt\Handle
  */
 class EncodeV5
 {
@@ -36,7 +34,7 @@ class EncodeV5
         }
         $body .= chr($connect_flags);
 
-        $keepalive = !empty($data['keepalive']) && (int)$data['keepalive'] >= 0 ? (int)$data['keepalive'] : 0;
+        $keepalive = !empty($data['keepalive']) && (int) $data['keepalive'] >= 0 ? (int) $data['keepalive'] : 0;
         $body .= Encoder::shortInt($keepalive);
 
         // CONNECT Properties for MQTT5
@@ -71,6 +69,7 @@ class EncodeV5
         $body .= PackProperty::connAck($data['properties'] ?? []);
 
         $head = Encoder::packHead(MQTTConst::CMD_CONNACK, strlen($body));
+
         return $head . $body;
     }
 
@@ -123,21 +122,22 @@ class EncodeV5
 
             $subscribeOptions = 0;
             if (isset($options['qos'])) {
-                $subscribeOptions |= (int)$options['qos'];
+                $subscribeOptions |= (int) $options['qos'];
             }
             if (isset($options['no_local'])) {
-                $subscribeOptions |= (int)$options['no_local'] << 2;
+                $subscribeOptions |= (int) $options['no_local'] << 2;
             }
             if (isset($options['retain_as_published'])) {
-                $subscribeOptions |= (int)$options['retain_as_published'] << 3;
+                $subscribeOptions |= (int) $options['retain_as_published'] << 3;
             }
             if (isset($options['retain_handling'])) {
-                $subscribeOptions |= (int)$options['retain_handling'] << 4;
+                $subscribeOptions |= (int) $options['retain_handling'] << 4;
             }
             $body .= chr($subscribeOptions);
         }
 
         $head = Encoder::packHead(MQTTConst::CMD_SUBSCRIBE, strlen($body), 0, 1);
+
         return $head . $body;
     }
 
