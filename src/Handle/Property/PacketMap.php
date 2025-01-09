@@ -12,21 +12,20 @@ use Workerman\Mqtt\Consts\PropertyConst;
  */
 class PacketMap
 {
-
     /**
      * CONNECT 报文携带 Payload，在可变头部新增的属性有
      * @var string[]
      */
     public static $connect = [
-        PropertyConst::SESSION_EXPIRY_INTERVAL => 'session_expiry_interval',
-        PropertyConst::AUTHENTICATION_METHOD => 'authentication_method',
-        PropertyConst::AUTHENTICATION_DATA => 'authentication_data',
-        PropertyConst::REQUEST_PROBLEM_INFORMATION => 'request_problem_information',
+        PropertyConst::SESSION_EXPIRY_INTERVAL      => 'session_expiry_interval',
+        PropertyConst::AUTHENTICATION_METHOD        => 'authentication_method',
+        PropertyConst::AUTHENTICATION_DATA          => 'authentication_data',
+        PropertyConst::REQUEST_PROBLEM_INFORMATION  => 'request_problem_information',
         PropertyConst::REQUEST_RESPONSE_INFORMATION => 'request_response_information',
-        PropertyConst::RECEIVE_MAXIMUM => 'receive_maximum',
-        PropertyConst::TOPIC_ALIAS_MAXIMUM => 'topic_alias_maximum',
-        PropertyConst::USER_PROPERTY => 'user_property',
-        PropertyConst::MAXIMUM_PACKET_SIZE => 'maximum_packet_size',
+        PropertyConst::RECEIVE_MAXIMUM              => 'receive_maximum',
+        PropertyConst::TOPIC_ALIAS_MAXIMUM          => 'topic_alias_maximum',
+        PropertyConst::USER_PROPERTY                => 'user_property',
+        PropertyConst::MAXIMUM_PACKET_SIZE          => 'maximum_packet_size',
     ];
 
     /**
@@ -34,23 +33,23 @@ class PacketMap
      * @var string[]
      */
     public static $connAck = [
-        PropertyConst::SESSION_EXPIRY_INTERVAL => 'session_expiry_interval',
-        PropertyConst::ASSIGNED_CLIENT_IDENTIFIER => 'assigned_client_identifier',
-        PropertyConst::SERVER_KEEP_ALIVE => 'server_keep_alive',
-        PropertyConst::AUTHENTICATION_METHOD => 'authentication_method',
-        PropertyConst::AUTHENTICATION_DATA => 'authentication_data',
-        PropertyConst::RESPONSE_INFORMATION => 'response_information',
-        PropertyConst::SERVER_REFERENCE => 'server_reference',
-        PropertyConst::REASON_STRING => 'reason_string',
-        PropertyConst::RECEIVE_MAXIMUM => 'receive_maximum',
-        PropertyConst::TOPIC_ALIAS_MAXIMUM => 'topic_alias_maximum',
-        PropertyConst::MAXIMUM_QOS => 'maximum_qos',
-        PropertyConst::RETAIN_AVAILABLE => 'retain_available',
-        PropertyConst::USER_PROPERTY => 'user_property',
-        PropertyConst::MAXIMUM_PACKET_SIZE => 'maximum_packet_size',
-        PropertyConst::WILDCARD_SUBSCRIPTION_AVAILABLE => 'wildcard_subscription_available',
+        PropertyConst::SESSION_EXPIRY_INTERVAL           => 'session_expiry_interval',
+        PropertyConst::ASSIGNED_CLIENT_IDENTIFIER        => 'assigned_client_identifier',
+        PropertyConst::SERVER_KEEP_ALIVE                 => 'server_keep_alive',
+        PropertyConst::AUTHENTICATION_METHOD             => 'authentication_method',
+        PropertyConst::AUTHENTICATION_DATA               => 'authentication_data',
+        PropertyConst::RESPONSE_INFORMATION              => 'response_information',
+        PropertyConst::SERVER_REFERENCE                  => 'server_reference',
+        PropertyConst::REASON_STRING                     => 'reason_string',
+        PropertyConst::RECEIVE_MAXIMUM                   => 'receive_maximum',
+        PropertyConst::TOPIC_ALIAS_MAXIMUM               => 'topic_alias_maximum',
+        PropertyConst::MAXIMUM_QOS                       => 'maximum_qos',
+        PropertyConst::RETAIN_AVAILABLE                  => 'retain_available',
+        PropertyConst::USER_PROPERTY                     => 'user_property',
+        PropertyConst::MAXIMUM_PACKET_SIZE               => 'maximum_packet_size',
+        PropertyConst::WILDCARD_SUBSCRIPTION_AVAILABLE   => 'wildcard_subscription_available',
         PropertyConst::SUBSCRIPTION_IDENTIFIER_AVAILABLE => 'subscription_identifier_available',
-        PropertyConst::SHARED_SUBSCRIPTION_AVAILABLE => 'shared_subscription_available',
+        PropertyConst::SHARED_SUBSCRIPTION_AVAILABLE     => 'shared_subscription_available',
     ];
 
     /**
@@ -59,13 +58,13 @@ class PacketMap
      */
     public static $publish = [
         PropertyConst::PAYLOAD_FORMAT_INDICATOR => 'payload_format_indicator',
-        PropertyConst::MESSAGE_EXPIRY_INTERVAL => 'message_expiry_interval',
-        PropertyConst::CONTENT_TYPE => 'content_type',
-        PropertyConst::RESPONSE_TOPIC => 'response_topic',
-        PropertyConst::CORRELATION_DATA => 'correlation_data',
-        PropertyConst::SUBSCRIPTION_IDENTIFIER => 'subscription_identifier',
-        PropertyConst::TOPIC_ALIAS => 'topic_alias',
-        PropertyConst::USER_PROPERTY => 'user_property',
+        PropertyConst::MESSAGE_EXPIRY_INTERVAL  => 'message_expiry_interval',
+        PropertyConst::CONTENT_TYPE             => 'content_type',
+        PropertyConst::RESPONSE_TOPIC           => 'response_topic',
+        PropertyConst::CORRELATION_DATA         => 'correlation_data',
+        PropertyConst::SUBSCRIPTION_IDENTIFIER  => 'subscription_identifier',
+        PropertyConst::TOPIC_ALIAS              => 'topic_alias',
+        PropertyConst::USER_PROPERTY            => 'user_property',
     ];
 
     /**
@@ -82,7 +81,7 @@ class PacketMap
      */
     public static $subscribe = [
         PropertyConst::SUBSCRIPTION_IDENTIFIER => 'subscription_identifier',
-        PropertyConst::USER_PROPERTY => 'user_property',
+        PropertyConst::USER_PROPERTY           => 'user_property',
     ];
 
     /**
@@ -100,25 +99,25 @@ class PacketMap
      */
     public static $disConnect = [
         PropertyConst::SESSION_EXPIRY_INTERVAL => 'session_expiry_interval',
-        PropertyConst::SERVER_REFERENCE => 'server_reference',
-        PropertyConst::REASON_STRING => 'reason_string',
-        PropertyConst::USER_PROPERTY => 'user_property',
+        PropertyConst::SERVER_REFERENCE        => 'server_reference',
+        PropertyConst::REASON_STRING           => 'reason_string',
+        PropertyConst::USER_PROPERTY           => 'user_property',
     ];
 
     public static $auth = [
         PropertyConst::AUTHENTICATION_METHOD => 'authentication_method',
-        PropertyConst::AUTHENTICATION_DATA => 'authentication_data',
-        PropertyConst::REASON_STRING => 'reason_string',
-        PropertyConst::USER_PROPERTY => 'user_property',
+        PropertyConst::AUTHENTICATION_DATA   => 'authentication_data',
+        PropertyConst::REASON_STRING         => 'reason_string',
+        PropertyConst::USER_PROPERTY         => 'user_property',
     ];
 
     public static $willProperties = [
         PropertyConst::PAYLOAD_FORMAT_INDICATOR => 'payload_format_indicator',
-        PropertyConst::MESSAGE_EXPIRY_INTERVAL => 'message_expiry_interval',
-        PropertyConst::CONTENT_TYPE => 'content_type',
-        PropertyConst::RESPONSE_TOPIC => 'response_topic',
-        PropertyConst::CORRELATION_DATA => 'correlation_data',
-        PropertyConst::WILL_DELAY_INTERVAL => 'will_delay_interval',
-        PropertyConst::USER_PROPERTY => 'user_property',
+        PropertyConst::MESSAGE_EXPIRY_INTERVAL  => 'message_expiry_interval',
+        PropertyConst::CONTENT_TYPE             => 'content_type',
+        PropertyConst::RESPONSE_TOPIC           => 'response_topic',
+        PropertyConst::CORRELATION_DATA         => 'correlation_data',
+        PropertyConst::WILL_DELAY_INTERVAL      => 'will_delay_interval',
+        PropertyConst::USER_PROPERTY            => 'user_property',
     ];
 }

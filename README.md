@@ -9,6 +9,12 @@ composer require workerman/mqtt
 # 文档
 [中文文档](https://www.workerman.net/doc/workerman/components/workerman-mqtt.html)
 
+# support
+
+- MQTT
+- MQTT 5
+- MQTT over websocket
+
 # Example
 **subscribe.php**
 ```php

@@ -8,7 +8,8 @@
         "workerman",
         "mqtt_client",
         "mqtt3",
-        "mqtt5.0"
+        "mqtt5.0",
+        "mqtt over websocket"
     ],
     "homepage": "https://www.workerman.net",
     "license" : "MIT",
@@ -18,18 +19,31 @@
             "email": "walkor@workerman.net",
             "homepage": "https://www.workerman.net",
             "role": "Developer"
+        },
+        {
+            "name": "chaz6chez",
+            "email": "chaz6chez1993@outlook.com",
+            "role": "Developer"
         }
     ],
     "support": {
         "email": "walkor@workerman.net"
     },
     "require": {
-        "workerman/workerman" : ">=3.3.0"
+        "php": "^8.0",
+        "workerman/workerman" : "^4.0 | ^5.0"
+    },
+    "require-dev": {
+        "revolt/event-loop" : "^1.0",
+        "friendsofphp/php-cs-fixer": "^3.0"
     },
     "suggest": {
         "ext-event": "For better performance. "
     },
     "autoload": {
         "psr-4": {"Workerman\\Mqtt\\": "./src"}
+    },
+    "scripts": {
+        "cs-fix": "./vendor/bin/php-cs-fixer fix"
     }
 }

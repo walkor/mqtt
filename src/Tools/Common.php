@@ -3,11 +3,11 @@
 namespace Workerman\Mqtt\Tools;
 
 /**
- * @method static string hexDump(string $encode)  // 以16进制显示
- * @method static string hexDumpAscii(string $encode)   // 以16进制和相应的ASCII字符显示
- * @method static string printableText(string $encode)  // 可打印字符
- * @method static string hexStream(string $encode)  // 16进制流
- * @method static string ascii(string $encode)  // 以ASCII字符显示
+ * @method static string hexDump(string $encode) // 以16进制显示
+ * @method static string hexDumpAscii(string $encode) // 以16进制和相应的ASCII字符显示
+ * @method static string printableText(string $encode) // 可打印字符
+ * @method static string hexStream(string $encode) // 16进制流
+ * @method static string ascii(string $encode) // 以ASCII字符显示
  */
 abstract class Common
 {
