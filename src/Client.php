@@ -247,7 +247,7 @@ class Client
         $this->onMessage = function () {};
         // MQTT over websocket
         $this->_connection->websocketType = Ws::BINARY_TYPE_ARRAYBUFFER;
-        $this->_connection->websocketClientProtocol = 'MQTT';
+        $this->_connection->websocketClientProtocol = 'mqtt';
         $this->_connection->websocketClientDataProtocolClass = $this->_options['protocol_level'] === 5 ? Mqtt5::class : Mqtt::class;
         // 协议类标识
     }
@@ -268,7 +268,7 @@ class Client
         $this->_state                       = static::STATE_CONNECTING;
         $this->_connection->connect();
         $this->setConnectionTimeout($this->_options['connect_timeout']);
-        $this->debugDump("Try to connect to {$this->_connection->getRemoteAddress()}", '->');
+        $this->debugDump("Try to connect to {$this->_connection->getRemoteAddress()}{$this->_connection->getRemoteURI()}, protocol: {$this->_protocol}", '->');
     }
 
     /**

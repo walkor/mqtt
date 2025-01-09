@@ -56,7 +56,7 @@ class Ws implements ProtocolInterface
         /** @var ProtocolInterface $protocol */
         $protocol = $connection->websocketClientDataProtocolClass ?? null;
         if ($protocol) {
-            return $protocol::pack($data, $connection);
+            return $protocol::encode($data, $connection);
         }
         return $data;
     }
@@ -67,7 +67,7 @@ class Ws implements ProtocolInterface
         /** @var ProtocolInterface $protocol */
         $protocol = $connection->websocketClientDataProtocolClass ?? null;
         if ($protocol) {
-            return $protocol::unpack($package, $connection);
+            return $protocol::decode($package, $connection);
         }
         return $package;
     }
@@ -76,7 +76,7 @@ class Ws implements ProtocolInterface
     public static function input(string $buffer, ConnectionInterface $connection): int
     {
         if ($connection instanceof AsyncTcpConnection) {
-            BaseWs::input($buffer, $connection);
+            return BaseWs::input($buffer, $connection);
         }
         throw new \RuntimeException('Not support. ');
     }
@@ -85,7 +85,7 @@ class Ws implements ProtocolInterface
     public static function decode(string $buffer, ConnectionInterface $connection): mixed
     {
         if ($connection instanceof AsyncTcpConnection) {
-            BaseWs::decode($buffer, $connection);
+            return BaseWs::decode($buffer, $connection);
         }
         throw new \RuntimeException('Not support. ');
     }
@@ -95,7 +95,7 @@ class Ws implements ProtocolInterface
     {
         if ($connection instanceof AsyncTcpConnection) {
             try {
-                BaseWs::encode($data, $connection);
+                return BaseWs::encode($data, $connection);
             } catch (\Throwable $t) {
                 throw new \RuntimeException($t->getMessage(), $t->getCode());
             }
