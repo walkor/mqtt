@@ -1021,6 +1021,10 @@ class Client
             $this->_options['clean_session'] = 0;
         }
 
+        if (isset($options['uri'])) {
+            $this->_options['uri'] = $options['uri'];
+        }
+
         if (isset($options['username'])) {
             if (!static::isString($options['username'])) {
                 throw new InvalidArgumentException('Bad username, expected string or integer but ' . gettype($options['username']) . ' provided.');
