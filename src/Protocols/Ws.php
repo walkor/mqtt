@@ -37,7 +37,10 @@ class Ws implements ProtocolInterface
     /** @inheritdoc  */
     public static function init(string &$address, array &$options, array &$context): string
     {
-        class_alias($className = self::class, '\Protocols\Ws');
+        $className = self::class;
+        if (!class_exists('\Protocols\Ws')) {
+            class_alias($className, '\Protocols\Ws');
+        }
         if ($options['ssl'] and is_array($options['ssl'])) {
             $context['ssl'] = $options['ssl'];
         }
