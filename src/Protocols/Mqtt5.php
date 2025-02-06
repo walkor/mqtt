@@ -37,7 +37,9 @@ class Mqtt5 implements ProtocolInterface
         if ($options['protocol_level'] !== 5) {
             $className = Mqtt::class;
         }
-        class_alias($className, '\Workerman\Protocols\Mqtt');
+        if (!class_exists('\Workerman\Protocols\Mqtt')) {
+            class_alias($className, '\Workerman\Protocols\Mqtt');
+        }
         // context
         if ($options['bindto']) {
             $context['socket'] = ['bindto' => $options['bindto']];
