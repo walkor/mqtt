@@ -31,7 +31,7 @@
     },
     "require": {
         "php": "^8.0",
-        "workerman/workerman" : "^4.0 | ^5.0"
+        "workerman/workerman" : "^5.0"
     },
     "require-dev": {
         "revolt/event-loop" : "^1.0",
